@@ -1,0 +1,10 @@
+{
+  "name": "shaperush",
+  "version": "2.0.0",
+  "description": "ShapeRush - Match, Evolve, Survive",
+  "private": true,
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4"
+  },
+  "engines": { "node": ">=18" }
+}
