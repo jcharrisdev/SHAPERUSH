@@ -203,6 +203,14 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 }
 #btnMute.hidden{display:none;}
 
+/* BOSS */
+#bossBar{position:fixed;top:98px;left:50%;transform:translateX(-50%);z-index:30;width:min(88%,380px);pointer-events:none;display:none;}
+body.boss #bossBar{display:block;}
+body.boss #recordHint{display:none;}
+.boss-name{font-family:'Orbitron',monospace;font-weight:900;font-size:0.58rem;letter-spacing:4px;color:var(--pink);text-shadow:0 0 10px rgba(255,0,110,0.6);margin-bottom:4px;text-align:center;}
+.boss-track{height:9px;border-radius:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);overflow:hidden;}
+#bossFill{height:100%;width:100%;background:linear-gradient(to right,#ff006e,#ff8a00);transition:width 0.12s linear;}
+
 /* DIRECTION CHANGE */
 #dirAlert{position:fixed;top:172px;left:50%;transform:translateX(-50%);z-index:36;width:92%;max-width:380px;text-align:center;pointer-events:none;display:none;}
 #dirAlert.show{display:block;animation:alertPulse 0.45s ease-in-out infinite alternate;}
@@ -259,6 +267,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 <div id="xpBar"><div id="xpFill"></div></div>
 <div id="comboHud"><span id="comboMult">x1</span><span id="comboCount"></span></div>
 <div id="recordHint"></div>
+<div id="bossBar"><div class="boss-name" id="bossName"></div><div class="boss-track"><div id="bossFill"></div></div></div>
 <div id="debugPanel"></div>
 
 <!-- ══ HINT BAR ══ -->
@@ -290,6 +299,8 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   <div class="card">
     <div class="card-title">Elige tu personaje</div>
     <div class="themes" id="themePicker"></div>
+    <div class="card-title" style="margin:16px 0 8px;">Aura (skin del boss)</div>
+    <div class="themes" id="skinPicker"></div>
     <div id="themeHint"></div>
   </div>
 
@@ -338,6 +349,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
       <div class="stat-row"><span class="stat-label">BEST</span><span class="stat-val" id="goRecord">—</span></div>
       <div class="stat-row"><span class="stat-label">MAX COMBO</span><span class="stat-val" id="goBestCombo">x0</span></div>
       <div class="stat-row"><span class="stat-label">SHAPES</span><span class="stat-val" id="goCorrect">0</span></div>
+      <div class="stat-row" id="goBossRow"><span class="stat-label">BOSS</span><span class="stat-val" id="goBoss">—</span></div>
       <div class="stat-row"><span class="stat-label">ACCURACY</span><span class="stat-val" id="goAccuracy">—</span></div>
     </div>
 
@@ -350,6 +362,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 
   <div id="goUnlock"></div>
   <button class="btn btn-primary" id="btnReplay">RETRY</button>
+  <button class="btn btn-ghost" id="btnBossRetry" style="margin-top:0;margin-bottom:8px;">⚔ RETRY BOSS (PRACTICE)</button>
   <button class="btn btn-ghost" id="btnHome">🏠 Inicio</button>
 </div>
 
@@ -368,6 +381,32 @@ const CONFIG = {
   HIT_Y_PX: 36,                // vertical catch window
   GAME_OVER_DELAY_FRAMES: 30,  // short beat between last life lost and game over screen
   START_LIVES: 3,
+  // Final boss: free movement, auto-fire, dodge alien fire, catch the glowing shape for a power shot.
+  BOSS: {
+    ENABLED: true,
+    AT_SHAPES: 35,             // catches in a run before the boss shows up
+    NAME: 'VOID MAW',
+    WARN_FRAMES: 150,          // "boss incoming" warning; no new shapes spawn
+    INTRO_FRAMES: 110,         // boss slides in, harmless
+    DEATH_FRAMES: 110,
+    HP: 420,
+    WIDTH_MAX: 230,
+    SWAY_SPEED: 0.021,         // radians/step of the side-to-side movement (grows with phase)
+    HIT_SCORE: 5,              // points per shot that lands
+    KILL_SCORE: 5000,
+    KILL_SCORE_PER_LIFE: 1500, // bonus for every life left
+    SHOT: { EVERY: 8, SPEED: 13, DAMAGE: 1, RADIUS: 5 },       // automatic fire
+    POWER: { DAMAGE: 18, SPEED: 15, RADIUS: 17 },              // fired after catching the glowing shape
+    GIFT: { EVERY: 190, SPEED: 2.4, CATCH_RADIUS: 36 },
+    PLAYER: { HURT_RADIUS: 9, KEY_SPEED: 6.5, MAX_STEP: 24, MARGIN: 26, BOTTOM_MARGIN: 90 },
+    BULLET: { SIZE: 13, HURT_FACTOR: 0.72, MAX: 150 },
+    PHASE_AT: [0.66, 0.33],    // hp fractions where the boss changes pattern
+    ATTACKS: {
+      P1: { aimedEvery: 60, count: 3, spread: 0.22, speed: 4.0 },
+      P2: { fanEvery: 50, fanCount: 5, fanSpread: 1.2, fanSpeed: 3.6, aimedEvery: 110, aimedCount: 2, aimedSpread: 0.16, aimedSpeed: 5.0 },
+      P3: { streamEvery: 8, streamSwing: 1.15, streamSpeed: 3.7, aimedEvery: 68, aimedCount: 3, aimedSpread: 0.2, aimedSpeed: 5.6 },
+    },
+  },
   MAX_LANE_SPAN_PX: 520,       // lanes never spread wider than this (keeps wide screens playable)
   REFERENCE_TRAVEL_PX: 800,    // fall speed is scaled by travel length so crossing time is equal in every direction
   DIRECTION: {
@@ -452,6 +491,33 @@ const THEMES = {
   pixel: { label: 'Pixel', icon: '👾', unlockAt: 3500 },
   neon:  { label: 'Neon',  icon: '✦',  unlockAt: 5000 },
 };
+// Cosmetic auras earned by beating the boss. Purely visual.
+const SKINS = {
+  classic: { label: 'Classic', icon: '◯',  aura: null,      trail: null,      req: '' },
+  gold:    { label: 'Gold',    icon: '👑', aura: '#ffd700', trail: '#ffd700', req: 'Defeat the boss' },
+  void:    { label: 'Void',    icon: '🌌', aura: '#a855f7', trail: '#c4b5fd', req: 'Defeat the boss without being hit' },
+  skull:   { label: 'Skull',   icon: '💀', aura: '#ff3b30', trail: '#ff8a00', req: 'Defeat the boss in 1-life mode' },
+};
+const isSkinUnlocked = id => Profile.get('skins').includes(id);
+const activeSkin = () => SKINS[isSkinUnlocked(Profile.get('skin')) ? Profile.get('skin') : 'classic'];
+
+function renderSkinPicker() {
+  const current = Profile.get('skin');
+  document.getElementById('skinPicker').innerHTML = Object.entries(SKINS).map(([id, k]) => {
+    const locked = !isSkinUnlocked(id);
+    return `<button class="theme-btn ${id === current ? 'active' : ''} ${locked ? 'locked' : ''}" data-skin="${id}">${locked ? '🔒' : k.icon}<span>${k.label}</span></button>`;
+  }).join('');
+}
+function selectSkin(id) {
+  if (!SKINS[id]) return;
+  if (!isSkinUnlocked(id)) {
+    document.getElementById('themeHint').textContent = `${SKINS[id].req.toUpperCase()} TO UNLOCK ${SKINS[id].label.toUpperCase()}`;
+    return;
+  }
+  Profile.set('skin', id);
+  renderSkinPicker();
+}
+
 const isThemeUnlocked = id => Profile.get('totalScore') >= THEMES[id].unlockAt;
 function unlockedThemeIds() { return Object.keys(THEMES).filter(isThemeUnlocked); }
 
@@ -477,6 +543,7 @@ const Profile = (() => {
   const DEFAULTS = {
     bestScore: 0, bestScoreOneLife: 0, oneLife: false, totalGames: 0, totalScore: 0, totalShapes: 0, highestCombo: 0,
     totalHits: 0, perfectHits: 0,
+    bossKills: 0, bossKillsOneLife: 0, bossFlawless: 0, skins: ['classic'], skin: 'classic',
     lastId: '', lastStartDir: 'down', theme: 'geo', muted: false, debug: false,
   };
   let data = { ...DEFAULTS };
@@ -647,7 +714,7 @@ const DirectionManager = {
 
   /** Called after every catch: warn once the run has advanced far enough. */
   onCatch() {
-    if (!CONFIG.DIRECTION.ENABLED || game.alert || game.over) return;
+    if (!CONFIG.DIRECTION.ENABLED || game.alert || game.over || game.mode !== 'run') return;
     if (game.correctCount >= game.nextChangeShapes) this.startAlert();
   },
 
@@ -671,8 +738,12 @@ const DirectionManager = {
 
   hideAlert() { document.getElementById('dirAlert').classList.remove('show'); },
 
+  /** Hides the start / boss banner once its time is up (unless a warning has taken the slot). */
+  tickBanner() {
+    if (game.startBanner > 0 && --game.startBanner === 0 && !game.alert && game.mode !== 'warn') this.hideAlert();
+  },
+
   tick() {
-    if (game.startBanner > 0 && --game.startBanner === 0 && !game.alert) this.hideAlert();
     if (!game.alert) return;
     if (--game.alert.frames <= 0) this.commit();
     else this.renderCountdown();
@@ -748,6 +819,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('userInput').value = Profile.get('lastId');
   selectedTheme = isThemeUnlocked(Profile.get('theme')) ? Profile.get('theme') : 'geo';
   renderThemePicker();
+  renderSkinPicker();
   if (new URLSearchParams(location.search).has('debug')) Profile.set('debug', true);
 });
 
@@ -812,6 +884,11 @@ function setupUI() {
   document.getElementById('btnLeaderboard').addEventListener('click', showLeaderboard);
   document.getElementById('btnBackLb').addEventListener('click', () => show('screenWelcome'));
   document.getElementById('btnReplay').addEventListener('click', retry);
+  document.getElementById('btnBossRetry').addEventListener('click', retryBoss);
+  document.getElementById('skinPicker').addEventListener('click', e => {
+    const btn = e.target.closest('.theme-btn');
+    if (btn) selectSkin(btn.dataset.skin);
+  });
   document.getElementById('btnHome').addEventListener('click', () => { show('screenWelcome'); drawMenuBg(); });
 
   const oneLifeBtn = document.getElementById('btnOneLife');
@@ -1023,11 +1100,11 @@ function hexRgb(hex){return`${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(
 // ═══════════════════════════════════════════════════════
 function laneX(lane, g = world) { return g.offset + g.laneW * (lane + 0.5); }
 
-function startGame() {
+function startGame(opts = {}) {
   if (raf) cancelAnimationFrame(raf);
   if (menuRaf) cancelAnimationFrame(menuRaf);
   show(null); // hide all screens
-  setWorld(DirectionManager.pickStart());
+  setWorld(opts.bossOnly ? 'down' : DirectionManager.pickStart());
 
   const theme = selectedTheme;
   const oneLife = Profile.get('oneLife');
@@ -1037,6 +1114,8 @@ function startGame() {
 
   game = {
     running: true, over: false, overTimer: 0,
+    mode: 'run', practice: !!opts.bossOnly, bossDefeated: false, bossBonus: 0, bossHits: 0, boss: null,
+    bullets: [], shots: [], gifts: [],
     newBest: false, startedAt: performance.now(),
     score: 0, displayScore: 0, lives: oneLife ? 1 : CONFIG.START_LIVES,
     speed: CONFIG.MIN_SPEED, spawnRate: CONFIG.SPAWN_INTERVAL.EASY, frame: 0,
@@ -1064,7 +1143,9 @@ function startGame() {
   game.player.currentX = laneX(1);
   DifficultyManager.reset();
   DirectionManager.reset();
-  if (Profile.get('totalGames') < CONFIG.INTRO_HINT_GAMES) showFlash('CATCH THE SHAPE BELOW ↓', '#00f5ff');
+  document.body.classList.remove('boss');
+  if (opts.bossOnly) BossManager.start();
+  else if (Profile.get('totalGames') < CONFIG.INTRO_HINT_GAMES) showFlash('CATCH THE SHAPE BELOW ↓', '#00f5ff');
 
   updateHUD();
   updateHint();
@@ -1092,19 +1173,23 @@ function loop(now) {
 
 function step() {
   game.frame++;
+  const inBoss = game.mode === 'boss';
 
-  if (!game.over) {
+  if (game.over) {
+    if (--game.overTimer <= 0) { endGame(); return; }
+  } else if (!inBoss) {
     DifficultyManager.tick();
     DirectionManager.tick();
-    if (!game.alert && game.frame >= game.nextSpawnFrame) spawnWave();
-  } else if (--game.overTimer <= 0) {
-    endGame();
-    return;
+    BossManager.tickWarn();
+    if (game.mode === 'run' && !game.alert && game.frame >= game.nextSpawnFrame) spawnWave();
   }
+  DirectionManager.tickBanner();
   if (game.frame % 3 === 0) spawnBgParticle();
 
   updatePlayer();
-  updateShapes();
+  if (inBoss) { if (!game.over) BossManager.update(); }
+  else updateShapes();
+  if (!game.running) return;      // the boss fight can end the run from inside update()
   updateParticles();
   updateExplosions();
   updateBgParticles();
@@ -1236,10 +1321,14 @@ function spawnExplosion(x, y, color) {
 function updatePlayer() {
   const p = game.player;
 
-  // Smooth lane movement
-  const targetX = laneX(p.targetLane);
-  p.currentX += (targetX - p.currentX) * 0.18;
-  p.lane = p.targetLane;
+  if (game.mode === 'boss') {
+    BossManager.movePlayer();
+  } else {
+    // Smooth lane movement
+    const targetX = laneX(p.targetLane);
+    p.currentX += (targetX - p.currentX) * 0.18;
+    p.lane = p.targetLane;
+  }
 
   // Jump physics
   if (p.jumping) {
@@ -1260,7 +1349,7 @@ function updatePlayer() {
   }
 
   // Trail
-  game.trails.push({ x: p.currentX, y: p.y, color: p.color, alpha: 0.35, size: 26 });
+  game.trails.push({ x: p.currentX, y: p.y, color: activeSkin().trail || p.color, alpha: 0.35, size: 26 });
   if (game.trails.length > 12) game.trails.shift();
 
   if (p.invincible > 0) p.invincible--;
@@ -1367,6 +1456,7 @@ function onCatch(s, offset) {
   p.color  = next.color;
 
   DirectionManager.onCatch();
+  BossManager.onCatch();
   updateHUD(tierUp ? 'pop' : null);
   updateHint();
 }
@@ -1443,15 +1533,24 @@ function draw() {
 
   ctx.save();
   applyWorldTransform();             // world space: everything that has a lane
-  drawLanes();
-  drawBgParticles();
-  drawLaneHighlights();
-  drawShapeTrails();
-  drawFallingShapes();
-  drawPlayerTrail();
-  drawExplosions();
-  drawParticles();
-  drawPlayer();
+  if (game.mode === 'boss') {
+    drawBgParticles();
+    drawBossScene();
+    drawPlayerTrail();
+    drawExplosions();
+    drawParticles();
+    drawPlayer();
+  } else {
+    drawLanes();
+    drawBgParticles();
+    drawLaneHighlights();
+    drawShapeTrails();
+    drawFallingShapes();
+    drawPlayerTrail();
+    drawExplosions();
+    drawParticles();
+    drawPlayer();
+  }
   ctx.restore();
 
   drawDirectionAlert();
@@ -1531,6 +1630,109 @@ function drawDirectionAlert() {
   ctx.restore();
 }
 
+function drawBossScene() {
+  drawGifts();
+  drawBoss();
+  drawBossBullets();
+  drawShots();
+}
+
+function drawGifts() {
+  const p = game.player;
+  for (const g of game.gifts) {
+    const pulse = 0.5 + 0.5 * Math.sin(game.frame * 0.2);
+    ctx.save();
+    ctx.globalAlpha = 0.5 + 0.4 * pulse; ctx.strokeStyle = p.color; ctx.lineWidth = 3;
+    ctx.shadowBlur = 22; ctx.shadowColor = p.color;
+    ctx.beginPath(); ctx.arc(g.x, g.y, CONFIG.BOSS.GIFT.CATCH_RADIUS * (0.9 + 0.12 * pulse), 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    drawEntity(ctx, game.theme, p.entity, g.x, g.y, 22, p.color, 1, true, (game.frame - g.born) * 0.03);
+  }
+}
+
+function drawBossBullets() {
+  for (const bl of game.bullets) drawEntity(ctx, game.theme, bl.entity, bl.x, bl.y, bl.size, bl.color, 1, true, bl.rot);
+}
+
+function drawShots() {
+  for (const s of game.shots) {
+    ctx.save();
+    ctx.fillStyle = s.color; ctx.shadowColor = s.color; ctx.shadowBlur = s.power ? 26 : 12;
+    ctx.globalAlpha = s.power ? 0.95 : 0.85;
+    ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r * (s.power ? 1 : 0.7), s.r * (s.power ? 1.8 : 2.4), 0, 0, Math.PI * 2); ctx.fill();
+    if (s.power) { ctx.globalAlpha = 0.5; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.5, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+}
+
+/** The alien: drawn in a 220-wide design space and scaled to the screen. */
+function drawBoss() {
+  const b = game.boss;
+  if (!b) return;
+  const k = BossManager.width() / 220;
+  const palette = [['#7CFC00', '#2b0a4d', '#b6ff6a'], ['#ffbe0b', '#4d0a2b', '#ffe08a'], ['#ff2a55', '#4d0a0a', '#ff8fa3']][b.phase];
+  const [glow, dark, light] = palette;
+  const p = game.player;
+  const dying = b.state === 'dying';
+  ctx.save();
+  ctx.translate(b.x + (dying ? (Math.random() - 0.5) * 8 : 0), b.y + (dying ? (Math.random() - 0.5) * 8 : 0));
+  ctx.scale(k, k);
+  if (dying) ctx.globalAlpha = 1 - b.dying / (CONFIG.BOSS.DEATH_FRAMES * 1.15);
+  ctx.shadowColor = glow; ctx.shadowBlur = 26;
+
+  // tentacles
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 6; i++) {
+    const x0 = (i - 2.5) * 30, w = Math.sin(b.t * 0.08 + i * 1.3) * 16;
+    ctx.strokeStyle = dark; ctx.lineWidth = 13 - Math.abs(i - 2.5) * 1.2;
+    ctx.beginPath(); ctx.moveTo(x0, 40); ctx.quadraticCurveTo(x0 + w, 80, x0 + w * 1.6, 112); ctx.stroke();
+    ctx.strokeStyle = glow; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0, 42); ctx.quadraticCurveTo(x0 + w, 80, x0 + w * 1.6, 112); ctx.stroke();
+  }
+  // antennae
+  for (const sgn of [-1, 1]) {
+    const sw = Math.sin(b.t * 0.06 + sgn) * 10;
+    ctx.strokeStyle = glow; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(sgn * 40, -50); ctx.quadraticCurveTo(sgn * (70 + sw), -88, sgn * (60 + sw * 1.4), -102); ctx.stroke();
+    ctx.fillStyle = light; ctx.beginPath(); ctx.arc(sgn * (60 + sw * 1.4), -102, 7, 0, Math.PI * 2); ctx.fill();
+  }
+  // spikes
+  ctx.fillStyle = dark;
+  for (let i = -3; i <= 3; i++) {
+    ctx.beginPath(); ctx.moveTo(i * 26 - 10, -58 + Math.abs(i) * 6); ctx.lineTo(i * 26, -84 + Math.abs(i) * 10); ctx.lineTo(i * 26 + 10, -58 + Math.abs(i) * 6); ctx.closePath(); ctx.fill();
+  }
+  // body
+  const g = ctx.createRadialGradient(0, -20, 10, 0, 0, 115);
+  g.addColorStop(0, light); g.addColorStop(0.45, glow); g.addColorStop(1, dark);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(0, 0, 110, 68, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  // eyes that follow the player
+  const look = Math.atan2(p.y - b.y, p.currentX - b.x);
+  const eyes = [[-52, -14, 17], [0, -30, 22], [52, -14, 17]];
+  for (const [ex, ey, er] of eyes) {
+    ctx.fillStyle = '#0a0018'; ctx.beginPath(); ctx.ellipse(ex, ey, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = b.phase === 2 ? '#ff2a55' : '#ffffff';
+    ctx.beginPath(); ctx.arc(ex + Math.cos(look) * er * 0.35, ey + Math.sin(look) * er * 0.35, er * 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(ex + Math.cos(look) * er * 0.5, ey + Math.sin(look) * er * 0.5, er * 0.24, 0, Math.PI * 2); ctx.fill();
+  }
+  // jagged mouth
+  const open = 6 + 5 * (0.5 + 0.5 * Math.sin(b.t * 0.2));
+  ctx.fillStyle = '#0a0018';
+  ctx.beginPath(); ctx.ellipse(0, 34, 46, open, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  for (let i = -3; i <= 3; i++) {
+    ctx.beginPath(); ctx.moveTo(i * 12 - 5, 34 - open * 0.8); ctx.lineTo(i * 12, 34 - open * 0.8 + 9); ctx.lineTo(i * 12 + 5, 34 - open * 0.8); ctx.closePath(); ctx.fill();
+  }
+  // hit flash
+  if (b.flash > 0) {
+    ctx.globalAlpha = Math.min(0.55, b.flash * 0.12);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(0, 0, 110, 68, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawBgParticles() {
   for(const p of game.bgParticles){
     ctx.fillStyle=p.color; ctx.globalAlpha=p.alpha;
@@ -1596,10 +1798,11 @@ function drawPlayer() {
 
   // Glow orb beneath
   const a=p.invincible>0?0.2+Math.sin(p.invincible*0.35)*0.25:0.15;
-  const grad=ctx.createRadialGradient(p.currentX,p.baseY+20,0,p.currentX,p.baseY+20,38);
+  const gy0 = game.mode === 'boss' ? p.y : p.baseY;
+  const grad=ctx.createRadialGradient(p.currentX,gy0+20,0,p.currentX,gy0+20,38);
   grad.addColorStop(0,`rgba(${hexRgb(p.color)},${a})`);
   grad.addColorStop(1,'transparent');
-  ctx.fillStyle=grad; ctx.fillRect(0,p.baseY-20,world.w,80);
+  ctx.fillStyle=grad; ctx.fillRect(0,gy0-20,world.w,80);
 
   // Invincible flash
   const alpha=p.invincible>0?0.3+Math.sin(p.invincible*0.45)*0.5:1;
@@ -1609,6 +1812,23 @@ function drawPlayer() {
   ctx.scale(p.scale*(1-(p.squash||0)*0.5), p.scale*(1+(p.squash||0)*0.5));
   drawEntity(ctx,game.theme,p.entity,0,0,28,p.color,alpha,true,p.rotation-world.angle);
 
+  // Earned skin: pulsing aura
+  const skin = activeSkin();
+  if (skin.aura) {
+    const pulse = 0.5 + 0.5 * Math.sin(game.frame * 0.12);
+    ctx.save();
+    ctx.strokeStyle = skin.aura; ctx.shadowColor = skin.aura; ctx.shadowBlur = 18;
+    ctx.globalAlpha = 0.5 + 0.3 * pulse; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, 40 + pulse * 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.25; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, 50 + pulse * 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  // Boss fight: show the real (small) hitbox
+  if (game.mode === 'boss') {
+    ctx.save(); ctx.globalAlpha = 0.95; ctx.fillStyle = '#ffffff'; ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
   // Shield ring when invincible
   if(p.invincible>0){
     ctx.globalAlpha=0.6;
@@ -1701,6 +1921,9 @@ const AudioManager = (() => {
     error:     { pri: 4, type: 'sawtooth', vol: 0.55, notes: [[190, 0, 0.22, 80]] },
     alert:     { pri: 4, type: 'square',   vol: 0.45, notes: [[880, 0, 0.12], [880, 0.2, 0.12], [1174, 0.4, 0.18]] },
     turn:      { pri: 3, type: 'sawtooth', vol: 0.45, notes: [[280, 0, 0.22, 900]] },
+    hit:       { pri: 0, type: 'square',   vol: 0.2, notes: [[520, 0, 0.04, 380]] },
+    boom:      { pri: 4, type: 'sawtooth', vol: 0.6, notes: [[220, 0, 0.35, 40]] },
+    victory:   { pri: 5, type: 'triangle', vol: 1.0, notes: [[523, 0, 0.12], [659, 0.12, 0.12], [784, 0.24, 0.12], [1047, 0.36, 0.3], [784, 0.66, 0.1], [1047, 0.76, 0.4]] },
     newRecord: { pri: 5, type: 'triangle', vol: 1.0, notes: [[523, 0, 0.1], [659, 0.1, 0.1], [784, 0.2, 0.1], [1047, 0.3, 0.25]] },
     gameOver:  { pri: 5, type: 'sawtooth', vol: 0.5, notes: [[392, 0, 0.16], [330, 0.16, 0.16], [262, 0.32, 0.3, 200]] },
   };
@@ -1776,6 +1999,298 @@ function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 function easeOutBack(t) { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
 
 // ═══════════════════════════════════════════════════════
+//  BOSS — final fight. Free movement, automatic fire, dodge the alien's shots,
+//  catch the glowing copy of your own shape for a power shot.
+//  Catching and taking damage reuse the normal run's onCatch / onWrongHit.
+// ═══════════════════════════════════════════════════════
+const bossKeys = new Set();
+let bossDrag = null;
+const clampNum = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+const BossManager = {
+  width()  { return Math.min(CONFIG.BOSS.WIDTH_MAX, world.w * 0.58, world.h * 0.30); },
+  height() { return this.width() * 0.62; },
+  homeY()  { return 118 + this.height() * 0.5 + 50; },   // below the HUD and the boss bar
+  bounds() {
+    const P = CONFIG.BOSS.PLAYER;
+    return { x0: P.MARGIN, x1: world.w - P.MARGIN, y0: this.homeY() + this.height() * 0.5 + 30, y1: world.h - P.BOTTOM_MARGIN };
+  },
+
+  /** After every catch in the normal run: bring on the boss once the run has gone far enough. */
+  onCatch() {
+    const B = CONFIG.BOSS;
+    if (!B.ENABLED || game.mode !== 'run' || game.practice || game.over) return;
+    if (game.correctCount >= B.AT_SHAPES) this.warn();
+  },
+
+  warn() {
+    game.mode = 'warn';
+    game.warnFrames = CONFIG.BOSS.WARN_FRAMES;
+    game.alert = null;
+    game.startBanner = 0;
+    document.getElementById('dirTitle').textContent = '⚠ WARNING';
+    document.getElementById('dirSub').innerHTML = 'BOSS INCOMING<br>DRAG OR WASD TO MOVE · YOU SHOOT BY YOURSELF';
+    document.getElementById('dirAlert').classList.add('show');
+    AudioManager.play('alert');
+  },
+
+  tickWarn() { if (game.mode === 'warn' && --game.warnFrames <= 0) this.start(); },
+
+  start() {
+    const B = CONFIG.BOSS;
+    setWorld('down');                       // the fight is always drawn upright
+    document.body.classList.add('boss');
+    bossKeys.clear(); bossDrag = null;
+    document.getElementById('bossName').textContent = B.NAME;
+    document.getElementById('bossFill').style.width = '100%';
+    game.mode = 'boss';
+    game.alert = null;
+    game.fallingShapes = []; game.floaters = []; game.trails = []; game.particles = []; game.explosions = [];
+    game.bullets = []; game.shots = []; game.gifts = [];
+    game.bossHits = 0;
+    game.lives = game.maxLives;
+    game.combo = 0;
+    game.params = DifficultyManager.paramsFor(0.7);    // lookalike decoys: bullets that resemble your shape
+    const p = game.player;
+    const b = this.bounds();
+    p.jumping = false; p.vy = 0; p.rotation = 0; p.invincible = 0;
+    p.currentX = world.w / 2; p.y = b.y1 - 20; p.tx = p.currentX; p.ty = p.y;
+    game.boss = {
+      hp: B.HP, maxHp: B.HP, x: world.w / 2, y: -this.height(), t: 0, state: 'intro', introLeft: B.INTRO_FRAMES,
+      flash: 0, phase: 0, dying: 0, fireCd: 0, giftCd: B.GIFT.EVERY * 0.6,
+      cd: { aimed: 60, fan: 60, stream: 30 },
+    };
+    document.getElementById('dirTitle').textContent = 'BOSS FIGHT';
+    document.getElementById('dirSub').innerHTML = 'DODGE THE FIRE<br>CATCH THE GLOWING SHAPE = POWER SHOT';
+    document.getElementById('dirAlert').classList.add('show');
+    game.startBanner = 190;
+    AudioManager.play('boom');
+    game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.WRONG;
+    updateHUD();
+    updateHint();
+  },
+
+  /** Free movement: drag (relative, so a finger never hides the ship), or WASD / arrows. */
+  movePlayer() {
+    const P = CONFIG.BOSS.PLAYER, p = game.player, b = this.bounds();
+    let vx = 0, vy = 0;
+    if (bossKeys.has('left')) vx -= 1;
+    if (bossKeys.has('right')) vx += 1;
+    if (bossKeys.has('up')) vy -= 1;
+    if (bossKeys.has('down')) vy += 1;
+    if (vx || vy) {
+      const n = Math.hypot(vx, vy);
+      p.currentX += vx / n * P.KEY_SPEED; p.y += vy / n * P.KEY_SPEED;
+      p.tx = p.currentX; p.ty = p.y;
+    } else if (p.tx !== undefined) {
+      p.currentX += clampNum((p.tx - p.currentX) * 0.45, -P.MAX_STEP, P.MAX_STEP);
+      p.y        += clampNum((p.ty - p.y) * 0.45, -P.MAX_STEP, P.MAX_STEP);
+    }
+    p.currentX = clampNum(p.currentX, b.x0, b.x1); p.y = clampNum(p.y, b.y0, b.y1);
+    p.tx = clampNum(p.tx, b.x0, b.x1); p.ty = clampNum(p.ty, b.y0, b.y1);
+  },
+
+  update() {
+    const B = CONFIG.BOSS, b = game.boss, bw = this.width(), bh = this.height();
+    b.t++;
+    if (b.flash > 0) b.flash--;
+
+    if (b.state === 'intro') {
+      b.y += (this.homeY() - b.y) * 0.06;
+      if (--b.introLeft <= 0) b.state = 'fight';
+    } else if (b.state === 'fight') {
+      const sway = (world.w - bw) * 0.42;
+      b.x = world.w / 2 + Math.sin(b.t * B.SWAY_SPEED * (1 + b.phase * 0.35)) * sway;
+      b.y = this.homeY() + Math.sin(b.t * 0.045) * 12;
+      const frac = b.hp / b.maxHp;
+      const phase = frac > B.PHASE_AT[0] ? 0 : frac > B.PHASE_AT[1] ? 1 : 2;
+      if (phase !== b.phase) this.shiftPhase(phase);
+      this.attacks(b, bh);
+      this.spawnGift(b, bh);
+      this.autoFire();
+    } else if (b.state === 'dying') {
+      b.dying++;
+      if (b.dying % 6 === 0) {
+        const x = b.x + (Math.random() - 0.5) * bw * 0.8, y = b.y + (Math.random() - 0.5) * bh * 0.8;
+        spawnParticles(x, y, ['#ff006e', '#ffbe0b', '#06d6a0', '#ffffff'][b.dying % 4], 14);
+        game.shake = 7;
+      }
+      if (b.dying >= B.DEATH_FRAMES) { this.finish(); return; }
+    }
+    this.updateShots(b, bw, bh);
+    this.updateBullets();
+    this.updateGifts();
+  },
+
+  shiftPhase(phase) {
+    const b = game.boss;
+    b.phase = phase;
+    for (const bl of game.bullets) spawnParticles(bl.x, bl.y, bl.color, 4);   // mercy: the screen clears
+    game.bullets = [];
+    b.cd = { aimed: 70, fan: 70, stream: 60 };
+    game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.WRONG;
+    const healed = game.lives < game.maxLives;      // a breather for whoever is hurting
+    if (healed) { game.lives++; updateHUD(); }
+    showFlash((phase === 1 ? 'PHASE 2' : 'FINAL PHASE') + (healed ? ' · +1 ❤' : ''), phase === 1 ? '#ffbe0b' : '#ff006e');
+    AudioManager.play('turn');
+  },
+
+  fire(from, angle, speed) {
+    if (game.bullets.length >= CONFIG.BOSS.BULLET.MAX) return;
+    const look = makeDecoy();      // never looks like your shape (or the next one)
+    game.bullets.push({
+      x: from.x, y: from.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      entity: look.entity, color: look.color, size: CONFIG.BOSS.BULLET.SIZE,
+      rot: 0, rotSpeed: (Math.random() - 0.5) * 0.16,
+    });
+  },
+  aimed(from, n, spread, speed) {
+    const p = game.player, a0 = Math.atan2(p.y - from.y, p.currentX - from.x);
+    for (let i = 0; i < n; i++) this.fire(from, a0 + (i - (n - 1) / 2) * spread, speed);
+  },
+  fan(from, n, spread, speed) {
+    for (let i = 0; i < n; i++) this.fire(from, Math.PI / 2 + (i - (n - 1) / 2) * (spread / (n - 1)), speed);
+  },
+
+  attacks(b, bh) {
+    const A = CONFIG.BOSS.ATTACKS, from = { x: b.x, y: b.y + bh * 0.28 };
+    if (b.phase === 0) {
+      if (--b.cd.aimed <= 0) { b.cd.aimed = A.P1.aimedEvery; this.aimed(from, A.P1.count, A.P1.spread, A.P1.speed); }
+    } else if (b.phase === 1) {
+      if (--b.cd.fan <= 0)   { b.cd.fan = A.P2.fanEvery; this.fan(from, A.P2.fanCount, A.P2.fanSpread, A.P2.fanSpeed); }
+      if (--b.cd.aimed <= 0) { b.cd.aimed = A.P2.aimedEvery; this.aimed(from, A.P2.aimedCount, A.P2.aimedSpread, A.P2.aimedSpeed); }
+    } else {
+      if (--b.cd.stream <= 0) {     // rapid swinging stream: the "fast shooting" phase
+        b.cd.stream = A.P3.streamEvery;
+        this.fire(from, Math.PI / 2 + Math.sin(b.t * 0.045) * A.P3.streamSwing, A.P3.streamSpeed);
+      }
+      if (--b.cd.aimed <= 0) { b.cd.aimed = A.P3.aimedEvery; this.aimed(from, A.P3.aimedCount, A.P3.aimedSpread, A.P3.aimedSpeed); }
+    }
+  },
+
+  spawnGift(b, bh) {
+    const G = CONFIG.BOSS.GIFT;
+    if (--b.giftCd > 0 || game.gifts.length) return;
+    b.giftCd = G.EVERY;
+    const m = CONFIG.BOSS.PLAYER.MARGIN + 20;
+    game.gifts.push({ x: m + Math.random() * (world.w - 2 * m), y: b.y + bh * 0.5, born: game.frame });
+  },
+
+  autoFire() {
+    const S = CONFIG.BOSS.SHOT, b = game.boss, p = game.player;
+    if (--b.fireCd > 0) return;
+    b.fireCd = S.EVERY;
+    game.shotSide = -(game.shotSide || 1);
+    game.shots.push({ x: p.currentX + game.shotSide * 9, y: p.y - 18, vy: -S.SPEED, r: S.RADIUS, dmg: S.DAMAGE, power: false, color: p.color });
+  },
+
+  damage(amount, x, y, power) {
+    const b = game.boss;
+    if (b.state !== 'fight') return;
+    b.hp = Math.max(0, b.hp - amount);
+    b.flash = power ? 8 : 3;
+    game.score += CONFIG.BOSS.HIT_SCORE * (power ? 4 : 1);
+    spawnParticles(x, y, power ? '#ffffff' : game.player.color, power ? 12 : 2);
+    if (power) { game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.TIER_UP; AudioManager.play('boom'); }
+    else AudioManager.play('hit');
+    document.getElementById('bossFill').style.width = (b.hp / b.maxHp * 100) + '%';
+    if (b.hp <= 0) this.defeat();
+  },
+
+  updateShots(b, bw, bh) {
+    for (let i = game.shots.length - 1; i >= 0; i--) {
+      const s = game.shots[i];
+      s.y += s.vy;
+      const dx = (s.x - b.x) / (bw * 0.5), dy = (s.y - b.y) / (bh * 0.5);
+      if (b.state === 'fight' && !s.spent && dx * dx + dy * dy < 1) {
+        this.damage(s.dmg, s.x, s.y, s.power);
+        if (!s.power) { game.shots.splice(i, 1); continue; }
+        s.spent = true;                      // power shots pierce, but only hurt once
+      }
+      if (s.y < -40) game.shots.splice(i, 1);
+    }
+  },
+
+  updateBullets() {
+    const B = CONFIG.BOSS, p = game.player;
+    for (let i = game.bullets.length - 1; i >= 0; i--) {
+      const bl = game.bullets[i];
+      bl.x += bl.vx; bl.y += bl.vy; bl.rot += bl.rotSpeed;
+      if (bl.x < -50 || bl.x > world.w + 50 || bl.y < -50 || bl.y > world.h + 50) { game.bullets.splice(i, 1); continue; }
+      if (p.invincible === 0 && !game.over && game.boss.state !== 'dying' &&
+          Math.hypot(bl.x - p.currentX, bl.y - p.y) < B.PLAYER.HURT_RADIUS + bl.size * B.BULLET.HURT_FACTOR) {
+        game.bullets.splice(i, 1);
+        game.bossHits++;
+        onWrongHit(bl);
+      }
+    }
+  },
+
+  updateGifts() {
+    const G = CONFIG.BOSS.GIFT, p = game.player;
+    for (let i = game.gifts.length - 1; i >= 0; i--) {
+      const g = game.gifts[i];
+      g.y += G.SPEED;
+      const d = Math.hypot(g.x - p.currentX, g.y - p.y);
+      if (d < G.CATCH_RADIUS && !game.over) {
+        game.gifts.splice(i, 1);
+        const at = { x: p.currentX, y: p.y };
+        onCatch(g, d / (G.CATCH_RADIUS * 1.6));          // same score / combo / evolve as the normal run
+        this.powerShot(at.x, at.y);
+        this.rerollLookalikes();
+      } else if (g.y > world.h + 40) game.gifts.splice(i, 1);
+    }
+  },
+
+  powerShot(x, y) {
+    const W = CONFIG.BOSS.POWER;
+    game.shots.push({ x, y: y - 20, vy: -W.SPEED, r: W.RADIUS, dmg: W.DAMAGE, power: true, color: game.player.color });
+  },
+
+  /** After you evolve, no hostile bullet may look like your new shape. */
+  rerollLookalikes() {
+    const p = game.player;
+    for (const bl of game.bullets) {
+      if (bl.entity === p.entity && bl.color === p.color) bl.color = pickOther(COLORS, p.color);
+    }
+  },
+
+  defeat() {
+    const b = game.boss;
+    b.state = 'dying'; b.dying = 0;
+    for (const bl of game.bullets) spawnParticles(bl.x, bl.y, bl.color, 5);
+    game.bullets = []; game.gifts = [];
+    game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.WRONG;
+    AudioManager.play('boom');
+    showFlash('BOSS DOWN!', '#06d6a0');
+  },
+
+  finish() {
+    const B = CONFIG.BOSS;
+    game.bossDefeated = true;
+    game.bossBonus = B.KILL_SCORE + B.KILL_SCORE_PER_LIFE * game.lives;
+    game.score += game.bossBonus;
+    endGame();
+  },
+
+  /** Skins earned by this victory (also for practice runs: they are cosmetic). */
+  awardSkins() {
+    const earned = ['gold'];
+    if (game.bossHits === 0) earned.push('void');
+    if (game.oneLife) earned.push('skull');
+    const have = Profile.get('skins');
+    const fresh = earned.filter(id => !have.includes(id));
+    Profile.update({
+      skins: [...have, ...fresh],
+      bossKills: Profile.get('bossKills') + 1,
+      bossKillsOneLife: Profile.get('bossKillsOneLife') + (game.oneLife ? 1 : 0),
+      bossFlawless: Profile.get('bossFlawless') + (game.bossHits === 0 ? 1 : 0),
+    });
+    return fresh;
+  },
+};
+
+// ═══════════════════════════════════════════════════════
 //  TOUCH CONTROLS
 // ═══════════════════════════════════════════════════════
 function moveLane(delta) {
@@ -1798,11 +2313,31 @@ function setupTouchControls() {
   canvas.addEventListener('touchstart',(e)=>{
     e.preventDefault();
     const t=e.touches[0]; tx=t.clientX; ty=t.clientY;
+    bossDrag = game.mode === 'boss' ? { sx: tx, sy: ty, px: game.player.currentX, py: game.player.y } : null;
   },{passive:false});
+
+  // Boss fight: relative drag, so the finger never covers the ship
+  canvas.addEventListener('touchmove',(e)=>{
+    e.preventDefault();
+    if (game.mode !== 'boss' || !bossDrag) return;
+    const t=e.touches[0];
+    game.player.tx = bossDrag.px + (t.clientX - bossDrag.sx);
+    game.player.ty = bossDrag.py + (t.clientY - bossDrag.sy);
+  },{passive:false});
+  canvas.addEventListener('mousedown',(e)=>{
+    if (game.mode === 'boss') bossDrag = { sx: e.clientX, sy: e.clientY, px: game.player.currentX, py: game.player.y };
+  });
+  window.addEventListener('mousemove',(e)=>{
+    if (game.mode !== 'boss' || !bossDrag) return;
+    game.player.tx = bossDrag.px + (e.clientX - bossDrag.sx);
+    game.player.ty = bossDrag.py + (e.clientY - bossDrag.sy);
+  });
+  window.addEventListener('mouseup',()=>{ bossDrag = null; });
 
   canvas.addEventListener('touchend',(e)=>{
     e.preventDefault();
     if(!game.running) return;
+    if (game.mode === 'boss') { bossDrag = null; return; }
     const t=e.changedTouches[0];
     const dx=t.clientX-tx, dy=t.clientY-ty;
     if (Math.abs(dx) < 45 && Math.abs(dy) < 45) {
@@ -1825,9 +2360,15 @@ function setupTouchControls() {
     }
     if(!game.running || e.shiftKey) return;
     const k = e.key.toLowerCase();
+    if (game.mode === 'boss') {        // free movement while a key is held
+      if (KEY_DIR[k]) { e.preventDefault(); bossKeys.add(KEY_DIR[k]); }
+      return;
+    }
     if (k === ' ') { e.preventDefault(); jump(); }
     else if (KEY_DIR[k]) { e.preventDefault(); handleIntent(KEY_DIR[k]); }
   });
+  document.addEventListener('keyup',(e)=>{ const d = KEY_DIR[e.key.toLowerCase()]; if (d) bossKeys.delete(d); });
+  window.addEventListener('blur',()=>bossKeys.clear());
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1853,44 +2394,61 @@ function endGame() {
   game.running = false;
   if (raf) { cancelAnimationFrame(raf); raf = null; }
 
+  document.body.classList.remove('boss');
+  bossKeys.clear(); bossDrag = null;
   DirectionManager.hideAlert();
+  document.getElementById('flashMsg').classList.remove('show');   // in-run toasts must not leak onto this screen
+
+  const victory = game.bossDefeated, practice = game.practice;
   const previousBest = game.bestAtStart;
-  const beatBest = previousBest > 0 && game.score > previousBest;
-  const best = Math.max(previousBest, game.score);
+  const beatBest = !practice && previousBest > 0 && game.score > previousBest;
+  const best = practice ? previousBest : Math.max(previousBest, game.score);
   const before = unlockedThemeIds();
-  recordRunStats();
+  if (!practice) recordRunStats();
+  const newSkins = victory ? BossManager.awardSkins() : [];
 
   const attempts = game.correctCount + game.fails;
-  document.getElementById('goLabel').textContent = game.oneLife ? 'SCORE · ☠ 1 LIFE' : 'SCORE';
-  document.getElementById('goTitle').textContent = beatBest ? '🏆 NEW BEST!' : 'GAME OVER';
+  document.getElementById('goLabel').textContent = 'SCORE' + (practice ? ' · PRACTICE' : game.oneLife ? ' · ☠ 1 LIFE' : '');
+  const title = document.getElementById('goTitle');
+  title.textContent = victory ? '👾 BOSS DEFEATED!' : beatBest ? '🏆 NEW BEST!' : 'GAME OVER';
+  title.style.fontSize = victory ? 'clamp(1.15rem, 6vw, 1.6rem)' : '2rem';
+  title.style.letterSpacing = victory ? '3px' : '';
   document.getElementById('goScore').textContent = game.score.toLocaleString();
   document.getElementById('goRecord').textContent = best.toLocaleString();
   document.getElementById('goBestCombo').textContent = 'x' + game.bestCombo;
   document.getElementById('goCorrect').textContent = game.correctCount;
   document.getElementById('goAccuracy').textContent = attempts ? Math.round(game.correctCount / attempts * 100) + '%' : '—';
 
+  const bossRow = document.getElementById('goBossRow');
+  bossRow.style.display = game.boss ? '' : 'none';
+  if (game.boss) document.getElementById('goBoss').textContent = victory ? 'DEFEATED' : Math.ceil(game.boss.hp / game.boss.maxHp * 100) + '% LEFT';
+  document.getElementById('btnBossRetry').style.display = game.boss && !victory ? '' : 'none';
+
   // All of these are computed from this run's real numbers.
   const gap = previousBest - game.score;
-  let msg = '';
-  if (beatBest) msg = `NEW RECORD\n+${(game.score - previousBest).toLocaleString()} ABOVE PREVIOUS BEST`;
-  else if (previousBest === 0 && game.score > 0) msg = 'FIRST SCORE SET — NOW BEAT IT!';
-  else if (gap > 0 && gap <= previousBest * CONFIG.NEAR_LOSS_FRACTION) msg = `YOU WERE ${gap.toLocaleString()} POINTS FROM YOUR BEST`;
+  const lines = [];
+  if (victory) lines.push(`VICTORY · +${game.bossBonus.toLocaleString()} BONUS`);
+  if (practice) lines.push('PRACTICE — NOT COUNTED FOR RECORDS');
+  else if (beatBest) lines.push(`NEW RECORD\n+${(game.score - previousBest).toLocaleString()} ABOVE PREVIOUS BEST`);
+  else if (previousBest === 0 && game.score > 0) lines.push('FIRST SCORE SET — NOW BEAT IT!');
+  else if (gap > 0 && gap <= previousBest * CONFIG.NEAR_LOSS_FRACTION) lines.push(`YOU WERE ${gap.toLocaleString()} POINTS FROM YOUR BEST`);
   const msgEl = document.getElementById('goRecordMsg');
-  msgEl.textContent = msg;
+  msgEl.textContent = lines.join('\n');
   msgEl.style.whiteSpace = 'pre-line';
 
-  const newlyUnlocked = unlockedThemeIds().filter(id => !before.includes(id));
-  document.getElementById('goUnlock').textContent = newlyUnlocked.length
-    ? 'UNLOCKED: ' + newlyUnlocked.map(id => THEMES[id].label.toUpperCase() + ' THEME').join(' · ')
-    : '';
+  const newlyUnlocked = unlockedThemeIds().filter(id => !before.includes(id))
+    .map(id => THEMES[id].label.toUpperCase() + ' THEME')
+    .concat(newSkins.map(id => SKINS[id].label.toUpperCase() + ' SKIN'));
+  document.getElementById('goUnlock').textContent = newlyUnlocked.length ? 'UNLOCKED: ' + newlyUnlocked.join(' · ') : '';
   renderThemePicker();
+  renderSkinPicker();
 
-  AudioManager.play(beatBest ? 'newRecord' : 'gameOver');
+  AudioManager.play(victory ? 'victory' : beatBest ? 'newRecord' : 'gameOver');
   retryLockedUntil = performance.now() + CONFIG.GAME_OVER_INPUT_LOCK_MS;
   show('screenGameOver');
   showTab('stats');
   drawMenuBg();
-  if (!game.oneLife) submitScore(game.score);   // global ranking is normal mode only; network never blocks the screen
+  if (!game.oneLife && !practice) submitScore(game.score);   // global ranking is normal mode only; network never blocks the screen
 }
 
 /** Fire-and-forget: keeps the global leaderboard in sync without delaying Retry. */
@@ -1905,6 +2463,13 @@ async function submitScore(score) {
     const d = await res.json();
     if (res.ok && d.record) currentUser.record = Math.max(currentUser.record || 0, d.record);
   } catch {}
+}
+
+/** Died against the boss? Jump straight back into the fight (practice: not counted for records). */
+function retryBoss() {
+  if (performance.now() < retryLockedUntil || !currentUser) return;
+  AudioManager.unlock();
+  startGame({ bossOnly: true });
 }
 
 /** Game Over → new run, no reload and no network round trip. */
@@ -1930,6 +2495,7 @@ function renderDebug() {
     `difficulty ${game.difficulty.toFixed(3)}  ${CONFIG.PHASES[game.phase].name}${DifficultyManager.isStruggling() ? ' (held)' : ''}\n` +
     `speed      ${game.speed.toFixed(2)}   spawn ${game.spawnRate}\n` +
     `target%    ${(P.targetChance * 100).toFixed(0)}  lookalike ${(P.lookalikeChance * 100).toFixed(0)}  double ${(P.doubleChance * 100).toFixed(0)}\n` +
+    (game.boss ? `boss       hp ${game.boss.hp}/${game.boss.maxHp}  phase ${game.boss.phase + 1}  bullets ${game.bullets.length}  ${game.boss.state}\n` : '') +
     `combo      ${game.combo} (x${ComboManager.multiplierFor(game.combo)})  best ${game.bestCombo}\n` +
     `ok/failed  ${game.correctCount}/${game.fails}  perfect ${game.perfects}`;
 }
