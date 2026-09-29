@@ -63,7 +63,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   background:rgba(4,4,15,0.96);backdrop-filter:blur(12px);
   padding:24px;
 }
-.screen.hidden{display:none;}
+.hidden{display:none !important;}
 
 /* LOGO */
 .logo{
@@ -139,7 +139,10 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   font-size:clamp(2.5rem,10vw,4.5rem);color:#fff;
   text-shadow:0 0 30px var(--yellow);line-height:1;margin:12px 0;
 }
-.score-rank{font-size:0.7rem;letter-spacing:3px;color:var(--yellow);text-transform:uppercase;}
+.score-rank{font-size:0.7rem;letter-spacing:3px;color:var(--yellow);text-transform:uppercase;min-height:1em;text-align:center;}
+.go-label{font-size:0.6rem;letter-spacing:4px;color:rgba(255,255,255,0.35);margin-top:10px;}
+#goUnlock{font-family:'Orbitron',monospace;font-size:0.7rem;letter-spacing:2px;color:var(--green);text-shadow:0 0 10px rgba(6,214,160,0.5);text-align:center;margin-bottom:12px;min-height:1em;}
+#debugPanel{position:fixed;left:8px;bottom:56px;z-index:45;font:10px/1.35 monospace;color:#9ff;background:rgba(0,0,0,0.55);padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;display:none;}
 
 /* LEADERBOARD */
 .lb-row{
@@ -250,6 +253,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 <div id="xpBar"><div id="xpFill"></div></div>
 <div id="comboHud"><span id="comboMult">x1</span><span id="comboCount"></span></div>
 <div id="recordHint"></div>
+<div id="debugPanel"></div>
 
 <!-- ══ HINT BAR ══ -->
 <div id="hintBar">
@@ -310,20 +314,21 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 ══════════════════════════════════════ -->
 <div class="screen hidden" id="screenGameOver">
   <div class="logo" style="font-size:2rem;margin-bottom:4px;" id="goTitle">GAME OVER</div>
-  <div class="score-rank" id="goRank"></div>
+  <div class="score-rank" id="goRecordMsg"></div>
+  <div class="go-label">SCORE</div>
   <div class="score-big" id="goScore">0</div>
 
   <div class="card" style="max-width:340px;width:100%;">
     <div class="tabs">
-      <button class="tab active" id="tabStats" onclick="showTab('stats')">Mi Partida</button>
+      <button class="tab active" id="tabStats" onclick="showTab('stats')">Run</button>
       <button class="tab" id="tabLb" onclick="showTab('lb')">Top Global</button>
     </div>
 
     <div id="panelStats">
-      <div class="stat-row"><span class="stat-label">Récord Personal</span><span class="stat-val" id="goRecord">—</span></div>
-      <div class="stat-row"><span class="stat-label">Formas atrapadas</span><span class="stat-val" id="goCorrect">0</span></div>
-      <div class="stat-row"><span class="stat-label">Mejor Combo</span><span class="stat-val" id="goBestCombo">0x</span></div>
-      <div class="stat-row"><span class="stat-label">Nivel alcanzado</span><span class="stat-val" id="goLevel">1</span></div>
+      <div class="stat-row"><span class="stat-label">BEST</span><span class="stat-val" id="goRecord">—</span></div>
+      <div class="stat-row"><span class="stat-label">MAX COMBO</span><span class="stat-val" id="goBestCombo">x0</span></div>
+      <div class="stat-row"><span class="stat-label">SHAPES</span><span class="stat-val" id="goCorrect">0</span></div>
+      <div class="stat-row"><span class="stat-label">ACCURACY</span><span class="stat-val" id="goAccuracy">—</span></div>
     </div>
 
     <div id="panelLb" class="hidden">
@@ -333,7 +338,8 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
     </div>
   </div>
 
-  <button class="btn btn-primary" id="btnReplay">JUGAR DE NUEVO</button>
+  <div id="goUnlock"></div>
+  <button class="btn btn-primary" id="btnReplay">RETRY</button>
   <button class="btn btn-ghost" id="btnHome">🏠 Inicio</button>
 </div>
 
@@ -405,10 +411,30 @@ const CONFIG = {
   AUDIO_VOLUME: 0.16,
   AUDIO_DEDUPE_MS: 90,         // a sound of equal/lower priority inside this window is skipped
 
+  // Records
+  NEAR_RECORD: { ABS: 300, FRACTION: 0.15 },   // show "N TO NEW RECORD" inside max(ABS, best*FRACTION)
+  NEAR_LOSS_FRACTION: 0.35,    // game over: "X POINTS FROM YOUR BEST" if the gap is under this share of best
+  GAME_OVER_INPUT_LOCK_MS: 350,  // ignore Retry taps that were meant for the game
+  API_TIMEOUT_MS: 2500,
+  DEBUG_UPDATE_STEPS: 15,
+
   FLOATER_FRAMES: 42,          // floating text lifetime (~700ms)
   MAX_FLOATERS: 10,
 };
 const LANE_COUNT = CONFIG.LANE_COUNT;
+// Cosmetic themes. `unlockAt` = lifetime points on this device.
+const THEMES = {
+  geo:   { label: 'Geo',   icon: '⬡', unlockAt: 0 },
+  emoji: { label: 'Emoji', icon: '😎', unlockAt: 0 },
+  pixel: { label: 'Pixel', icon: '👾', unlockAt: 0 },
+  neon:  { label: 'Neon',  icon: '✦', unlockAt: 0 },
+};
+function unlockedThemeIds() {
+  const total = Profile.get('totalScore');
+  return Object.keys(THEMES).filter(id => total >= THEMES[id].unlockAt);
+}
+function renderThemePicker() {}
+
 const COMBO_COLORS = ['#00f5ff', '#00f5ff', '#ffbe0b', '#ff8a00', '#ff006e'];  // by multiplier tier
 
 // ═══════════════════════════════════════════════════════
@@ -559,6 +585,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setupUI();
   document.getElementById('userInput').value = Profile.get('lastId');
   selectTheme(Profile.get('theme'));
+  if (new URLSearchParams(location.search).has('debug')) Profile.set('debug', true);
 });
 
 function resize() {
@@ -623,7 +650,7 @@ function setupUI() {
   document.getElementById('userInput').addEventListener('keydown', e => { if (e.key === 'Enter') handleStart(); });
   document.getElementById('btnLeaderboard').addEventListener('click', showLeaderboard);
   document.getElementById('btnBackLb').addEventListener('click', () => show('screenWelcome'));
-  document.getElementById('btnReplay').addEventListener('click', () => { show('screenWelcome'); setTimeout(handleStart, 50); });
+  document.getElementById('btnReplay').addEventListener('click', retry);
   document.getElementById('btnHome').addEventListener('click', () => { show('screenWelcome'); drawMenuBg(); });
 
   // Audio: browsers need a user gesture before sound can play
@@ -656,14 +683,21 @@ async function handleStart() {
   err.textContent = '';
   Profile.set('lastId', id);
 
+  AudioManager.unlock();
   try {
     const res = await fetch(`${API}/user`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id }),
+      signal: AbortSignal.timeout(CONFIG.API_TIMEOUT_MS),
     });
+    if (res.status >= 400 && res.status < 500) {   // our input was rejected: tell the player
+      const data = await res.json().catch(() => ({}));
+      err.textContent = data.error || 'ID inválido';
+      return;
+    }
+    if (!res.ok) throw new Error('server unavailable');   // 5xx: play offline instead of blocking
     const data = await res.json();
-    if (!res.ok) { err.textContent = data.error || 'Error de servidor'; return; }
     currentUser = { id: data.id, record: data.record || 0 };
     startGame();
   } catch(e) {
@@ -825,6 +859,7 @@ function startGame() {
 
   game = {
     running: true, over: false, overTimer: 0,
+    newBest: false, startedAt: performance.now(),
     score: 0, displayScore: 0, lives: CONFIG.START_LIVES, level: 1,
     speed: CONFIG.MIN_SPEED, spawnRate: CONFIG.SPAWN_INTERVAL.EASY, frame: 0,
     nextSpawnFrame: CONFIG.FIRST_SPAWN_FRAME, spawned: 0,
@@ -892,6 +927,7 @@ function step() {
   updateTrails();
   Fx.update();
   tweenScoreDisplay();
+  if (game.frame % CONFIG.DEBUG_UPDATE_STEPS === 0) renderDebug();
 }
 
 function bumpScore() {
@@ -1134,7 +1170,13 @@ function onCatch(s, offset) {
     const sped = game.phase !== phaseBefore;
     showFlash(game.correctCount + ' SHAPES!' + (sped ? ' · SPEED UP!' : ''), '#06d6a0');
   }
-  AudioManager.play(tierUp ? 'comboUp' : milestone ? 'milestone' : perfect ? 'perfect' : 'correct');
+  const newBestNow = !game.newBest && game.bestAtStart > 0 && game.score > game.bestAtStart;
+  if (newBestNow) {
+    game.newBest = true;
+    showFlash('NEW BEST!', '#ffbe0b');
+    Fx.floatText(p.currentX, p.y - 150, 'NEW BEST!', '#ffbe0b', 20, 1.25);
+  }
+  AudioManager.play(newBestNow ? 'newRecord' : tierUp ? 'comboUp' : milestone ? 'milestone' : perfect ? 'perfect' : 'correct');
 
   const next = nextTarget();
   p.entity = next.entity;
@@ -1397,6 +1439,13 @@ function updateHUD(comboAnim = null) {
   multEl.style.color = COMBO_COLORS[ComboManager.tierIndex(game.combo)];
   document.getElementById('comboCount').textContent = game.combo > 1 ? game.combo + ' STREAK' : '';
   document.getElementById('xpFill').style.width = (ComboManager.progress(game.combo) * 100) + '%';
+  const hint = document.getElementById('recordHint');
+  const remaining = game.bestAtStart - game.score;
+  const near = CONFIG.NEAR_RECORD;
+  if (game.newBest) { hint.textContent = 'NEW BEST!'; hint.classList.add('show'); }
+  else if (game.bestAtStart > 0 && remaining > 0 && remaining <= Math.max(near.ABS, game.bestAtStart * near.FRACTION)) {
+    hint.textContent = remaining.toLocaleString() + ' TO NEW RECORD'; hint.classList.add('show');
+  } else hint.classList.remove('show');
   if (comboAnim) {
     hud.classList.remove('pop', 'lost');
     void hud.offsetWidth;  // restart the CSS animation
@@ -1537,10 +1586,17 @@ function setupTouchControls() {
 
   // Keyboard
   document.addEventListener('keydown',(e)=>{
-    if(!game.running) return;
-    if(e.key==='ArrowLeft') game.player.targetLane=Math.max(0,game.player.targetLane-1);
-    if(e.key==='ArrowRight') game.player.targetLane=Math.min(LANE_COUNT-1,game.player.targetLane+1);
-    if((e.key==='ArrowUp'||e.key===' ')&&!game.player.jumping){game.player.jumping=true;game.player.vy=-17;}
+    if (document.activeElement.tagName !== 'INPUT') {
+      if (e.key === 'D') toggleDebug();  // Shift+D
+      if ((e.key === 'Enter' || e.key === ' ') && !document.getElementById('screenGameOver').classList.contains('hidden')) {
+        e.preventDefault(); retry(); return;
+      }
+    }
+    if(!game.running || e.shiftKey) return;
+    const k = e.key.toLowerCase();
+    if(k==='arrowleft'||k==='a') game.player.targetLane=Math.max(0,game.player.targetLane-1);
+    if(k==='arrowright'||k==='d') game.player.targetLane=Math.min(LANE_COUNT-1,game.player.targetLane+1);
+    if((k==='arrowup'||k==='w'||k===' ')&&!game.player.jumping){game.player.jumping=true;game.player.vy=-17;}
   });
 }
 
@@ -1560,40 +1616,95 @@ function recordRunStats() {
   });
 }
 
-async function endGame() {
-  game.running=false;
-  if(raf){cancelAnimationFrame(raf);raf=null;}
+let retryLockedUntil = 0;
+
+function endGame() {
+  game.running = false;
+  if (raf) { cancelAnimationFrame(raf); raf = null; }
+
+  const previousBest = game.bestAtStart;
+  const beatBest = previousBest > 0 && game.score > previousBest;
+  const best = Math.max(previousBest, game.score);
+  const before = unlockedThemeIds();
   recordRunStats();
 
-  // Save score
-  const previousRecord = currentUser?.record || 0;
-  let record = previousRecord;
-  if(!currentUser?.offline && currentUser?.id){
-    try{
-      const res=await fetch(`${API}/score`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({id:currentUser.id,score:game.score})
-      });
-      const d=await res.json();
-      record=d.record||record;
-      currentUser.record=record;
-    }catch{}
-  }
+  const attempts = game.correctCount + game.fails;
+  document.getElementById('goTitle').textContent = beatBest ? '🏆 NEW BEST!' : 'GAME OVER';
+  document.getElementById('goScore').textContent = game.score.toLocaleString();
+  document.getElementById('goRecord').textContent = best.toLocaleString();
+  document.getElementById('goBestCombo').textContent = 'x' + game.bestCombo;
+  document.getElementById('goCorrect').textContent = game.correctCount;
+  document.getElementById('goAccuracy').textContent = attempts ? Math.round(game.correctCount / attempts * 100) + '%' : '—';
 
-  const isNew=game.score>previousRecord;
-  document.getElementById('goTitle').textContent=isNew?'🏆 NUEVO RÉCORD':'GAME OVER';
-  document.getElementById('goScore').textContent=game.score.toLocaleString();
-  document.getElementById('goRecord').textContent=record.toLocaleString();
-  document.getElementById('goCorrect').textContent=game.correctCount;
-  document.getElementById('goBestCombo').textContent=game.bestCombo+'x';
-  document.getElementById('goLevel').textContent='—';
+  // All of these are computed from this run's real numbers.
+  const gap = previousBest - game.score;
+  let msg = '';
+  if (beatBest) msg = `NEW RECORD\n+${(game.score - previousBest).toLocaleString()} ABOVE PREVIOUS BEST`;
+  else if (previousBest === 0 && game.score > 0) msg = 'FIRST SCORE SET — NOW BEAT IT!';
+  else if (gap > 0 && gap <= previousBest * CONFIG.NEAR_LOSS_FRACTION) msg = `YOU WERE ${gap.toLocaleString()} POINTS FROM YOUR BEST`;
+  const msgEl = document.getElementById('goRecordMsg');
+  msgEl.textContent = msg;
+  msgEl.style.whiteSpace = 'pre-line';
 
+  const newlyUnlocked = unlockedThemeIds().filter(id => !before.includes(id));
+  document.getElementById('goUnlock').textContent = newlyUnlocked.length
+    ? 'UNLOCKED: ' + newlyUnlocked.map(id => THEMES[id].label.toUpperCase() + ' THEME').join(' · ')
+    : '';
+  renderThemePicker();
+
+  AudioManager.play(beatBest ? 'newRecord' : 'gameOver');
+  retryLockedUntil = performance.now() + CONFIG.GAME_OVER_INPUT_LOCK_MS;
   show('screenGameOver');
   showTab('stats');
   drawMenuBg();
+  submitScore(game.score);   // network never blocks the screen
 }
 
+/** Fire-and-forget: keeps the global leaderboard in sync without delaying Retry. */
+async function submitScore(score) {
+  if (!currentUser || currentUser.offline || score <= 0) return;
+  try {
+    const res = await fetch(`${API}/score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: currentUser.id, score }),
+    });
+    const d = await res.json();
+    if (res.ok && d.record) currentUser.record = Math.max(currentUser.record || 0, d.record);
+  } catch {}
+}
+
+/** Game Over → new run, no reload and no network round trip. */
+function retry() {
+  if (performance.now() < retryLockedUntil || !currentUser) return;
+  AudioManager.unlock();
+  startGame();
+}
+
+// ═══════════════════════════════════════════════════════
+//  DEBUG TELEMETRY — local only, toggle with the D key or ?debug
+// ═══════════════════════════════════════════════════════
+function renderDebug() {
+  const el = document.getElementById('debugPanel');
+  const on = Profile.get('debug');
+  el.style.display = on ? 'block' : 'none';
+  if (!on || !game.running) return;
+  const P = game.params;
+  el.textContent =
+    `score      ${game.score}\n` +
+    `time       ${((performance.now() - game.startedAt) / 1000).toFixed(1)}s\n` +
+    `difficulty ${game.difficulty.toFixed(3)}  ${CONFIG.PHASES[game.phase].name}${DifficultyManager.isStruggling() ? ' (held)' : ''}\n` +
+    `speed      ${game.speed.toFixed(2)}   spawn ${game.spawnRate}\n` +
+    `target%    ${(P.targetChance * 100).toFixed(0)}  lookalike ${(P.lookalikeChance * 100).toFixed(0)}  double ${(P.doubleChance * 100).toFixed(0)}\n` +
+    `combo      ${game.combo} (x${ComboManager.multiplierFor(game.combo)})  best ${game.bestCombo}\n` +
+    `ok/failed  ${game.correctCount}/${game.fails}  perfect ${game.perfects}`;
+}
+
+function toggleDebug() {
+  Profile.set('debug', !Profile.get('debug'));
+  renderDebug();
+  if (!Profile.get('debug')) document.getElementById('debugPanel').style.display = 'none';
+}
 </script>
 </body>
 </html>
