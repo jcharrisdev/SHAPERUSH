@@ -118,6 +118,14 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 }
 .theme-btn span{font-size:0.45rem;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;}
 .theme-btn.locked{opacity:0.4;}
+.mode-toggle{
+  width:100%;max-width:340px;margin-bottom:14px;padding:11px;border-radius:14px;cursor:pointer;
+  font-family:'Orbitron',monospace;font-weight:700;font-size:0.68rem;letter-spacing:2px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.55);
+  transition:all 0.2s;
+}
+.mode-toggle.on{border-color:var(--pink);color:var(--pink);background:rgba(255,0,110,0.1);box-shadow:0 0 18px rgba(255,0,110,0.25);}
+.mode-toggle small{display:block;font-family:'Exo 2',sans-serif;font-weight:400;font-size:0.6rem;letter-spacing:1px;margin-top:3px;opacity:0.7;}
 .howto{font-size:0.72rem;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:18px;line-height:1.7;}
 .howto b{color:var(--cyan);font-weight:600;}
 .howto-keys{font-size:0.62rem;letter-spacing:1px;color:rgba(255,255,255,0.35);}
@@ -273,6 +281,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
     <div id="themeHint"></div>
   </div>
 
+  <button class="mode-toggle" id="btnOneLife" aria-pressed="false"></button>
   <div class="howto">
     <div><b>Atrapa</b> la forma del indicador ↓ · <b>esquiva</b> las demás</div>
     <div class="howto-keys">◀ ▶ mover &nbsp;·&nbsp; ▲ saltar &nbsp;·&nbsp; M sonido</div>
@@ -304,7 +313,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 <div class="screen hidden" id="screenGameOver">
   <div class="logo" style="font-size:2rem;margin-bottom:4px;" id="goTitle">GAME OVER</div>
   <div class="score-rank" id="goRecordMsg"></div>
-  <div class="go-label">SCORE</div>
+  <div class="go-label" id="goLabel">SCORE</div>
   <div class="score-big" id="goScore">0</div>
 
   <div class="card" style="max-width:340px;width:100%;">
@@ -442,7 +451,7 @@ const COMBO_COLORS = ['#00f5ff', '#00f5ff', '#ffbe0b', '#ff8a00', '#ff006e'];  /
 const Profile = (() => {
   const KEY = 'shaperush.v1';
   const DEFAULTS = {
-    bestScore: 0, totalGames: 0, totalScore: 0, totalShapes: 0, highestCombo: 0,
+    bestScore: 0, bestScoreOneLife: 0, oneLife: false, totalGames: 0, totalScore: 0, totalShapes: 0, highestCombo: 0,
     totalHits: 0, perfectHits: 0,
     lastId: '', theme: 'geo', muted: false, debug: false,
   };
@@ -654,6 +663,17 @@ function setupUI() {
   document.getElementById('btnReplay').addEventListener('click', retry);
   document.getElementById('btnHome').addEventListener('click', () => { show('screenWelcome'); drawMenuBg(); });
 
+  const oneLifeBtn = document.getElementById('btnOneLife');
+  const renderOneLife = () => {
+    const on = Profile.get('oneLife');
+    oneLifeBtn.classList.toggle('on', on);
+    oneLifeBtn.setAttribute('aria-pressed', on);
+    oneLifeBtn.innerHTML = (on ? '☠ 1 VIDA · ON' : '☠ 1 VIDA · OFF') +
+      `<small>${on ? 'Un solo error y se acaba · récord aparte (solo en este dispositivo)' : 'Modo difícil: sin segunda oportunidad'}</small>`;
+  };
+  oneLifeBtn.addEventListener('click', () => { Profile.set('oneLife', !Profile.get('oneLife')); renderOneLife(); });
+  renderOneLife();
+
   // Audio: browsers need a user gesture before sound can play
   const muteBtn = document.getElementById('btnMute');
   const renderMute = () => { muteBtn.textContent = Profile.get('muted') ? '🔇' : '🔊'; };
@@ -858,6 +878,7 @@ function startGame() {
   show(null); // hide all screens
 
   const theme = selectedTheme;
+  const oneLife = Profile.get('oneLife');
   const list = getEntityList(theme);
   const entity = list[Math.floor(Math.random() * list.length)];
   const color  = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -865,11 +886,13 @@ function startGame() {
   game = {
     running: true, over: false, overTimer: 0,
     newBest: false, startedAt: performance.now(),
-    score: 0, displayScore: 0, lives: CONFIG.START_LIVES,
+    score: 0, displayScore: 0, lives: oneLife ? 1 : CONFIG.START_LIVES,
     speed: CONFIG.MIN_SPEED, spawnRate: CONFIG.SPAWN_INTERVAL.EASY, frame: 0,
     nextSpawnFrame: CONFIG.FIRST_SPAWN_FRAME, spawned: 0,
     correctCount: 0, fails: 0, perfects: 0, combo: 0, bestCombo: 0,
-    bestAtStart: Math.max(Profile.get('bestScore'), currentUser?.record || 0),
+    oneLife,
+    maxLives: oneLife ? 1 : CONFIG.START_LIVES,
+    bestAtStart: oneLife ? Profile.get('bestScoreOneLife') : Math.max(Profile.get('bestScore'), currentUser?.record || 0),
     theme,
     particles: [], fallingShapes: [], explosions: [],
     bgParticles: [], trails: [], floaters: [], shake: 0,
@@ -1439,7 +1462,7 @@ function updateHUD(comboAnim = null) {
   const hud = document.getElementById('comboHud');
   const mult = ComboManager.multiplierFor(game.combo);
   document.getElementById('hudBest').textContent = Math.max(game.bestAtStart, game.score).toLocaleString();
-  document.getElementById('hudLives').textContent = '❤️'.repeat(game.lives) + '🖤'.repeat(Math.max(0, CONFIG.START_LIVES - game.lives));
+  document.getElementById('hudLives').textContent = '❤️'.repeat(game.lives) + '🖤'.repeat(Math.max(0, game.maxLives - game.lives));
   const multEl = document.getElementById('comboMult');
   multEl.textContent = 'x' + mult;
   multEl.style.color = COMBO_COLORS[ComboManager.tierIndex(game.combo)];
@@ -1612,7 +1635,7 @@ function setupTouchControls() {
 /** Lifetime stats kept on this device. */
 function recordRunStats() {
   Profile.update({
-    bestScore: Math.max(Profile.get('bestScore'), game.score),
+    [game.oneLife ? 'bestScoreOneLife' : 'bestScore']: Math.max(Profile.get(game.oneLife ? 'bestScoreOneLife' : 'bestScore'), game.score),
     totalGames: Profile.get('totalGames') + 1,
     totalScore: Profile.get('totalScore') + game.score,
     totalShapes: Profile.get('totalShapes') + game.correctCount,
@@ -1635,6 +1658,7 @@ function endGame() {
   recordRunStats();
 
   const attempts = game.correctCount + game.fails;
+  document.getElementById('goLabel').textContent = game.oneLife ? 'SCORE · ☠ 1 LIFE' : 'SCORE';
   document.getElementById('goTitle').textContent = beatBest ? '🏆 NEW BEST!' : 'GAME OVER';
   document.getElementById('goScore').textContent = game.score.toLocaleString();
   document.getElementById('goRecord').textContent = best.toLocaleString();
@@ -1663,7 +1687,7 @@ function endGame() {
   show('screenGameOver');
   showTab('stats');
   drawMenuBg();
-  submitScore(game.score);   // network never blocks the screen
+  if (!game.oneLife) submitScore(game.score);   // global ranking is normal mode only; network never blocks the screen
 }
 
 /** Fire-and-forget: keeps the global leaderboard in sync without delaying Retry. */
