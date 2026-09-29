@@ -332,7 +332,16 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 //  CONFIG & CONSTANTS
 // ═══════════════════════════════════════════════════════
 const API = '/api'; // Vercel serverless functions
-const LANE_COUNT = 3;
+
+const CONFIG = {
+  LANE_COUNT: 3,
+  STEP_MS: 1000 / 60,          // fixed simulation step
+  MAX_FRAME_MS: 100,           // longest frame we simulate (acts as auto-pause when tab is hidden)
+  HIT_X_LANE_FRACTION: 0.6,    // horizontal catch window, as a fraction of lane width
+  HIT_Y_PX: 36,                // vertical catch window
+  GAME_OVER_DELAY_FRAMES: 30,  // short beat between last life lost and game over screen
+};
+const LANE_COUNT = CONFIG.LANE_COUNT;
 
 const GEO_SHAPES  = ['circle','triangle','square','diamond','pentagon','star','hexagon','cross'];
 const EMOJI_SETS  = ['😀','😎','🤩','😜','🥳','😈','🤖','👽'];
@@ -355,6 +364,7 @@ let game = {};
 let currentUser = null;
 let selectedTheme = 'geo';
 let raf = null;
+let lastFrameTime = 0, accumulator = 0;
 let stars = [];
 
 // ═══════════════════════════════════════════════════════
@@ -474,7 +484,7 @@ async function handleStart() {
 // ═══════════════════════════════════════════════════════
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
+  if (id) document.getElementById(id).classList.remove('hidden');
 }
 
 function showTab(tab) {
@@ -619,7 +629,7 @@ function startGame() {
   const color  = COLORS[Math.floor(Math.random() * COLORS.length)];
 
   game = {
-    running: true,
+    running: true, over: false, overTimer: 0,
     score: 0, lives: 3, level: 1,
     speed: 3.2, spawnRate: 85, frame: 0,
     correctCount: 0, combo: 0, bestCombo: 0,
@@ -645,17 +655,36 @@ function startGame() {
   updateHUD();
   updateHint();
   document.getElementById('hudUser').textContent = currentUser?.id || '—';
-  loop();
+  lastFrameTime = performance.now();
+  accumulator = 0;
+  raf = requestAnimationFrame(loop);
 }
 
 // ═══════════════════════════════════════════════════════
 //  GAME LOOP
 // ═══════════════════════════════════════════════════════
-function loop() {
+function loop(now) {
   if (!game.running) return;
+  // Fixed 60Hz simulation: game speed is identical on 60/120/144Hz displays.
+  accumulator += Math.min(now - lastFrameTime, CONFIG.MAX_FRAME_MS);
+  lastFrameTime = now;
+  while (accumulator >= CONFIG.STEP_MS) {
+    step();
+    accumulator -= CONFIG.STEP_MS;
+  }
+  draw();
+  raf = requestAnimationFrame(loop);
+}
+
+function step() {
   game.frame++;
 
-  if (game.frame % game.spawnRate === 0) spawnFallingShape();
+  if (!game.over) {
+    if (game.frame % game.spawnRate === 0) spawnFallingShape();
+  } else if (--game.overTimer <= 0) {
+    endGame();
+    return;
+  }
   if (game.frame % 3 === 0) spawnBgParticle();
 
   updatePlayer();
@@ -664,34 +693,57 @@ function loop() {
   updateExplosions();
   updateBgParticles();
   updateTrails();
-
-  draw();
-  raf = requestAnimationFrame(loop);
 }
 
 // ═══════════════════════════════════════════════════════
 //  SPAWN
 // ═══════════════════════════════════════════════════════
+// The target is whatever the player currently looks like; catching it evolves the player.
+function isTarget(shape) {
+  return shape.entity === game.player.entity && shape.color === game.player.color;
+}
+
+// What the player will become after the next catch (evolution is deterministic).
+function nextTarget() {
+  const p = game.player;
+  const list = getEntityList(game.theme);
+  return {
+    entity: list[(list.indexOf(p.entity) + 1) % list.length],
+    color: COLORS[(COLORS.indexOf(p.color) + 1) % COLORS.length],
+  };
+}
+
+function pickOther(list, exclude) {
+  const options = list.filter(v => v !== exclude);
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+// Decoys never look like the current target NOR the next one, so what you see is what scores.
+function makeDecoy() {
+  const p = game.player;
+  const next = nextTarget();
+  const list = getEntityList(game.theme);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const t = Math.random();
+    let entity, color;
+    if (t < 0.38)      { entity = pickOther(list, p.entity); color = p.color; }
+    else if (t < 0.76) { entity = p.entity; color = pickOther(COLORS, p.color); }
+    else               { entity = pickOther(list, p.entity); color = pickOther(COLORS, p.color); }
+    if (entity === next.entity && color === next.color) continue;
+    return { entity, color };
+  }
+  return { entity: pickOther(list, p.entity), color: p.color };
+}
+
 function spawnFallingShape() {
   const lane = Math.floor(Math.random() * LANE_COUNT);
-  const isMatch = Math.random() < 0.32;
-  let entity, color;
-  const list = getEntityList(game.theme);
-
-  if (isMatch) {
-    entity = game.player.entity;
-    color  = game.player.color;
-  } else {
-    const t = Math.random();
-    const otherEntities = list.filter(e => e !== game.player.entity);
-    const otherColors   = COLORS.filter(c => c !== game.player.color);
-    if (t < 0.38)      { entity = otherEntities[Math.floor(Math.random()*otherEntities.length)]; color = game.player.color; }
-    else if (t < 0.76) { entity = game.player.entity; color = otherColors[Math.floor(Math.random()*otherColors.length)]; }
-    else               { entity = otherEntities[Math.floor(Math.random()*otherEntities.length)]; color = otherColors[Math.floor(Math.random()*otherColors.length)]; }
-  }
+  // Only one target-looking shape in flight at a time: catching it changes the target.
+  const targetInFlight = game.fallingShapes.some(isTarget);
+  const wantTarget = !targetInFlight && Math.random() < 0.32;
+  const look = wantTarget ? { entity: game.player.entity, color: game.player.color } : makeDecoy();
 
   game.fallingShapes.push({
-    lane, entity, color, isMatch,
+    lane, entity: look.entity, color: look.color,
     y: -50, size: 22,
     rotation: 0, rotSpeed: (Math.random()-0.5)*0.08,
     wobble: 0, wobbleSpeed: Math.random()*0.1+0.05,
@@ -793,13 +845,15 @@ function updateShapes() {
 
     const p = game.player;
     const dist = Math.abs(s.y - p.y);
-    const sameX = Math.abs(laneX(s.lane) - p.currentX) < canvas.width/LANE_COUNT * 0.6;
+    const sameX = Math.abs(laneX(s.lane) - p.currentX) < canvas.width / LANE_COUNT * CONFIG.HIT_X_LANE_FRACTION;
+    const inReach = sameX && dist < CONFIG.HIT_Y_PX;
 
-    if (sameX && dist < 36 && p.invincible === 0) {
+    // Correct shapes can always be caught; invincibility only shields from damage.
+    if (inReach && (isTarget(s) || p.invincible === 0) && !game.over) {
       const px = p.currentX;
       game.fallingShapes.splice(i, 1);
 
-      if (s.isMatch) {
+      if (isTarget(s)) {
         // ✅ CORRECT
         game.combo++;
         if (game.combo > game.bestCombo) game.bestCombo = game.combo;
@@ -820,11 +874,9 @@ function updateShapes() {
         }
 
         // Evolve player
-        const list = getEntityList(game.theme);
-        const ni = list.indexOf(p.entity);
-        const ci = COLORS.indexOf(p.color);
-        p.entity = list[(ni+1) % list.length];
-        p.color  = COLORS[(ci+1) % COLORS.length];
+        const next = nextTarget();
+        p.entity = next.entity;
+        p.color  = next.color;
         game.correctCount++;
         updateHUD(); updateHint();
       } else {
@@ -834,12 +886,12 @@ function updateShapes() {
         p.invincible = 90; p.wobble = 24;
         game.lives--;
         updateHUD();
-        if (game.lives <= 0) setTimeout(endGame, 500);
+        if (game.lives <= 0) { game.over = true; game.overTimer = CONFIG.GAME_OVER_DELAY_FRAMES; }
       }
       continue;
     }
     if (s.y > canvas.height + 60) {
-      if (s.isMatch && game.combo > 0) game.combo = 0; // miss resets combo
+      if (isTarget(s) && game.combo > 0) game.combo = 0; // missed target resets combo
       game.fallingShapes.splice(i,1);
     }
   }
@@ -980,7 +1032,7 @@ function drawFallingShapes() {
     drawEntity(ctx,game.theme,s.entity,laneX(s.lane),s.y,s.size*s.scale,s.color,1,true,s.rotation);
 
     // Match indicator glow ring
-    if(s.isMatch){
+    if(isTarget(s)){
       ctx.save();
       ctx.globalAlpha=0.25+Math.sin(game.frame*0.15)*0.2;
       ctx.strokeStyle=s.color; ctx.lineWidth=2;
@@ -1155,7 +1207,8 @@ async function endGame() {
   if(raf){cancelAnimationFrame(raf);raf=null;}
 
   // Save score
-  let record = currentUser?.record || 0;
+  const previousRecord = currentUser?.record || 0;
+  let record = previousRecord;
   if(!currentUser?.offline && currentUser?.id){
     try{
       const res=await fetch(`${API}/score`,{
@@ -1169,7 +1222,7 @@ async function endGame() {
     }catch{}
   }
 
-  const isNew=game.score>currentUser?.record;
+  const isNew=game.score>previousRecord;
   document.getElementById('goTitle').textContent=isNew?'🏆 NUEVO RÉCORD':'GAME OVER';
   document.getElementById('goScore').textContent=game.score.toLocaleString();
   document.getElementById('goRecord').textContent=record.toLocaleString();
@@ -1182,12 +1235,6 @@ async function endGame() {
   drawMenuBg();
 }
 
-// show() override to handle no-screen state (during game)
-const origShow = show;
-window.show = function(id) {
-  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
-  if(id) document.getElementById(id).classList.remove('hidden');
-};
 </script>
 </body>
 </html>
