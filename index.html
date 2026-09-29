@@ -311,6 +311,7 @@ body.boss #recordHint{display:none;}
   </div>
 
   <button class="btn btn-primary" id="btnStart">JUGAR</button>
+  <button class="btn btn-ghost" id="btnBossPractice">⚔ Pelear contra el Boss (práctica)</button>
   <button class="btn btn-ghost" id="btnLeaderboard">🏆 Clasificación Global</button>
 </div>
 
@@ -820,7 +821,9 @@ window.addEventListener('DOMContentLoaded', () => {
   selectedTheme = isThemeUnlocked(Profile.get('theme')) ? Profile.get('theme') : 'geo';
   renderThemePicker();
   renderSkinPicker();
-  if (new URLSearchParams(location.search).has('debug')) Profile.set('debug', true);
+  const params = new URLSearchParams(location.search);
+  if (params.has('debug')) Profile.set('debug', true);
+  if (params.has('boss') && Profile.get('lastId')) handleStart({ bossOnly: true });   // shortcut straight into the fight
 });
 
 function resize() {
@@ -879,7 +882,8 @@ function setupUI() {
     if (btn) selectTheme(btn.dataset.theme);
   });
 
-  document.getElementById('btnStart').addEventListener('click', handleStart);
+  document.getElementById('btnStart').addEventListener('click', () => handleStart());
+  document.getElementById('btnBossPractice').addEventListener('click', () => handleStart({ bossOnly: true }));
   document.getElementById('userInput').addEventListener('keydown', e => { if (e.key === 'Enter') handleStart(); });
   document.getElementById('btnLeaderboard').addEventListener('click', showLeaderboard);
   document.getElementById('btnBackLb').addEventListener('click', () => show('screenWelcome'));
@@ -928,7 +932,7 @@ function selectTheme(theme) {
   renderThemePicker();
 }
 
-async function handleStart() {
+async function handleStart(opts = {}) {
   const raw = document.getElementById('userInput').value.trim();
   const id = raw.toUpperCase().replace(/[^A-Z0-9_]/g,'');
   const err = document.getElementById('inputError');
@@ -952,11 +956,11 @@ async function handleStart() {
     if (!res.ok) throw new Error('server unavailable');   // 5xx: play offline instead of blocking
     const data = await res.json();
     currentUser = { id: data.id, record: data.record || 0 };
-    startGame();
+    startGame(opts);
   } catch(e) {
     // offline fallback
     currentUser = { id, record: 0, offline: true };
-    startGame();
+    startGame(opts);
   }
 }
 
