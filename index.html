@@ -165,7 +165,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 
 /* FLASH MESSAGE */
 #flashMsg{
-  position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  position:fixed;top:122px;left:50%;transform:translateX(-50%);
   z-index:60;font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;
   letter-spacing:3px;padding:10px 24px;border-radius:40px;
   background:rgba(0,245,255,0.15);border:1px solid rgba(0,245,255,0.4);
@@ -359,6 +359,33 @@ const CONFIG = {
   // Near miss: a target passed within this many px of the catch window.
   NEAR_MISS_PX: 45,
 
+  // Difficulty d runs 0..1. Everything below is interpolated between its EASY and HARD value.
+  MIN_SPEED: 3.0,              // fall speed (px/step) at d=0
+  MAX_SPEED: 8.0,              // ... and at d=1
+  DIFFICULTY_CURVE: 1.3,       // >1 = gentler start, steeper end
+  DIFFICULTY_RATE: {
+    PER_HIT: 0.02,             // d gained per catch
+    PER_SECOND: 0.0015,        // slow drift with time survived
+    FLOW_STREAK: 6,            // streak that counts as "mastering" the current pace
+    FLOW_BONUS: 1.5,           // hit gain multiplier while on such a streak
+  },
+  FLOW: {                      // when struggling, d simply stops growing (it never drops)
+    ERROR_WINDOW_FRAMES: 480,  // ~8s
+    ERRORS_TO_HOLD: 2,
+  },
+  PHASES: [                    // `until` = upper bound of d for the phase
+    { name: 'EASY START',     until: 0.2 },
+    { name: 'MEDIUM FLOW',    until: 0.55 },
+    { name: 'HIGH INTENSITY', until: 1.01 },
+  ],
+  SPAWN_INTERVAL: { EASY: 95, HARD: 36 },   // steps between waves
+  SPAWN_JITTER: 0.15,
+  FIRST_SPAWN_FRAME: 40,       // the first shape is always the target, so the goal is obvious
+  TARGET_CHANCE: { EASY: 0.6, HARD: 0.32 },
+  LOOKALIKE_CHANCE: { EASY: 0, HARD: 0.75 },  // decoys sharing colour or shape with the target
+  DOUBLE_SPAWN: { START_AT: 0.35, MAX_CHANCE: 0.4 },
+  RING_FADE: { FROM: 0.25, TO: 0.6, MIN_FACTOR: 0.4 },  // "this is the target" ring fades as you master the game
+
   FLOATER_FRAMES: 42,          // floating text lifetime (~700ms)
   MAX_FLOATERS: 10,
 };
@@ -401,6 +428,68 @@ const ComboManager = {
     if (i >= T.length - 1) return 1;
     return (combo - T[i].at) / (T[i + 1].at - T[i].at);
   },
+};
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+const DifficultyManager = {
+  phaseIndex(d) { return CONFIG.PHASES.findIndex(p => d < p.until); },
+
+  /** Gameplay parameters for a difficulty level. Pure function of d. */
+  paramsFor(d) {
+    const e = Math.pow(d, CONFIG.DIFFICULTY_CURVE);
+    const C = CONFIG;
+    return {
+      speed: lerp(C.MIN_SPEED, C.MAX_SPEED, e),
+      spawnRate: Math.round(lerp(C.SPAWN_INTERVAL.EASY, C.SPAWN_INTERVAL.HARD, e)),
+      targetChance: lerp(C.TARGET_CHANCE.EASY, C.TARGET_CHANCE.HARD, e),
+      lookalikeChance: lerp(C.LOOKALIKE_CHANCE.EASY, C.LOOKALIKE_CHANCE.HARD, e),
+      doubleChance: C.DOUBLE_SPAWN.MAX_CHANCE * smoothstep(C.DOUBLE_SPAWN.START_AT, 1, d),
+      ringFactor: lerp(1, C.RING_FADE.MIN_FACTOR, smoothstep(C.RING_FADE.FROM, C.RING_FADE.TO, d)),
+    };
+  },
+
+  /** Two or more recent errors: stop raising difficulty for a while. */
+  isStruggling() {
+    const F = CONFIG.FLOW;
+    game.recentErrors = game.recentErrors.filter(f => game.frame - f < F.ERROR_WINDOW_FRAMES);
+    return game.recentErrors.length >= F.ERRORS_TO_HOLD;
+  },
+
+  reset() {
+    game.difficulty = 0;
+    game.phase = 0;
+    game.recentErrors = [];
+    game.params = this.paramsFor(0);
+    this.syncGame();
+  },
+
+  onHit() {
+    const R = CONFIG.DIFFICULTY_RATE;
+    if (this.isStruggling()) return;
+    const bonus = game.combo >= R.FLOW_STREAK ? R.FLOW_BONUS : 1;
+    this.raise(R.PER_HIT * bonus);
+  },
+  onError() { game.recentErrors.push(game.frame); },
+
+  /** Called every simulation step. */
+  tick() {
+    if (!this.isStruggling()) this.raise(CONFIG.DIFFICULTY_RATE.PER_SECOND / 60);
+  },
+
+  raise(amount) {
+    game.difficulty = Math.min(1, game.difficulty + amount);
+    game.params = this.paramsFor(game.difficulty);
+    this.syncGame();
+    const phase = this.phaseIndex(game.difficulty);
+    if (phase !== game.phase) {
+      game.phase = phase;
+      showFlash(CONFIG.PHASES[phase].name, phase === 1 ? '#ffbe0b' : '#ff006e');
+    }
+  },
+
+  syncGame() { game.speed = game.params.speed; game.spawnRate = game.params.spawnRate; },
 };
 
 const ScoreManager = {
@@ -707,7 +796,8 @@ function startGame() {
   game = {
     running: true, over: false, overTimer: 0,
     score: 0, lives: CONFIG.START_LIVES, level: 1,
-    speed: 3.2, spawnRate: 85, frame: 0,
+    speed: CONFIG.MIN_SPEED, spawnRate: CONFIG.SPAWN_INTERVAL.EASY, frame: 0,
+    nextSpawnFrame: CONFIG.FIRST_SPAWN_FRAME, spawned: 0,
     correctCount: 0, fails: 0, perfects: 0, combo: 0, bestCombo: 0,
     bestAtStart: Math.max(Profile.get('bestScore'), currentUser?.record || 0),
     theme,
@@ -727,6 +817,7 @@ function startGame() {
   };
   game.player.y = game.player.baseY;
   game.player.currentX = laneX(1);
+  DifficultyManager.reset();
 
   updateHUD();
   updateHint();
@@ -755,7 +846,8 @@ function step() {
   game.frame++;
 
   if (!game.over) {
-    if (game.frame % game.spawnRate === 0) spawnFallingShape();
+    DifficultyManager.tick();
+    if (game.frame >= game.nextSpawnFrame) spawnWave();
   } else if (--game.overTimer <= 0) {
     endGame();
     return;
@@ -795,28 +887,39 @@ function pickOther(list, exclude) {
 }
 
 // Decoys never look like the current target NOR the next one, so what you see is what scores.
+// At higher difficulty more decoys are "lookalikes": same colour or same shape as the target.
 function makeDecoy() {
   const p = game.player;
   const next = nextTarget();
   const list = getEntityList(game.theme);
+  const lookalike = Math.random() < game.params.lookalikeChance;
   for (let attempt = 0; attempt < 20; attempt++) {
-    const t = Math.random();
     let entity, color;
-    if (t < 0.38)      { entity = pickOther(list, p.entity); color = p.color; }
-    else if (t < 0.76) { entity = p.entity; color = pickOther(COLORS, p.color); }
-    else               { entity = pickOther(list, p.entity); color = pickOther(COLORS, p.color); }
+    if (lookalike && Math.random() < 0.5) { entity = pickOther(list, p.entity); color = p.color; }
+    else if (lookalike)                   { entity = p.entity; color = pickOther(COLORS, p.color); }
+    else                                  { entity = pickOther(list, p.entity); color = pickOther(COLORS, p.color); }
     if (entity === next.entity && color === next.color) continue;
     return { entity, color };
   }
   return { entity: pickOther(list, p.entity), color: p.color };
 }
 
-function spawnFallingShape() {
-  const lane = Math.floor(Math.random() * LANE_COUNT);
+/** One wave = 1 shape, or 2 in different lanes at higher difficulty (never all lanes at once). */
+function spawnWave() {
+  const lanes = [...Array(LANE_COUNT).keys()].sort(() => Math.random() - 0.5);
+  const isDouble = game.spawned > 0 && Math.random() < game.params.doubleChance;
+  const count = isDouble ? 2 : 1;
+  for (let i = 0; i < count; i++) spawnFallingShape(lanes[i]);
+  const jitter = 1 + (Math.random() * 2 - 1) * CONFIG.SPAWN_JITTER;
+  game.nextSpawnFrame = game.frame + Math.max(1, Math.round(game.spawnRate * jitter));
+}
+
+function spawnFallingShape(lane) {
   // Only one target-looking shape in flight at a time: catching it changes the target.
   const targetInFlight = game.fallingShapes.some(isTarget);
-  const wantTarget = !targetInFlight && Math.random() < 0.32;
+  const wantTarget = game.spawned === 0 || (!targetInFlight && Math.random() < game.params.targetChance);
   const look = wantTarget ? { entity: game.player.entity, color: game.player.color } : makeDecoy();
+  game.spawned++;
 
   game.fallingShapes.push({
     lane, entity: look.entity, color: look.color,
@@ -957,6 +1060,7 @@ function onCatch(s, offset) {
   game.correctCount++;
   if (precision.name === 'PERFECT') game.perfects++;
 
+  DifficultyManager.onHit();
   const mult = ComboManager.multiplierFor(game.combo);
   const gain = ScoreManager.gain(mult, precision);
   game.score += gain;
@@ -982,6 +1086,7 @@ function onWrongHit(s) {
   const hadCombo = game.combo > 1;
   game.combo = 0;
   game.fails++;
+  DifficultyManager.onError();
   spawnExplosion(p.currentX, p.y, s.color);
   Fx.floatText(p.currentX, p.y - 60, 'OUCH', '#ff006e', 22);
   p.invincible = 90; p.wobble = 24;
@@ -995,6 +1100,7 @@ function onMissedTarget(s) {
   const hadCombo = game.combo > 1;
   game.combo = 0;
   game.fails++;
+  DifficultyManager.onError();
   const near = s.closestGap <= CONFIG.NEAR_MISS_PX;
   const x = Math.min(Math.max(laneX(s.lane), 60), canvas.width - 60);
   Fx.floatText(x, game.player.baseY + 70, near ? 'SO CLOSE' : 'MISSED', near ? '#ffbe0b' : 'rgba(255,255,255,0.55)', near ? 20 : 16);
@@ -1138,7 +1244,7 @@ function drawFallingShapes() {
     // Match indicator glow ring
     if(isTarget(s)){
       ctx.save();
-      ctx.globalAlpha=0.25+Math.sin(game.frame*0.15)*0.2;
+      ctx.globalAlpha=(0.25+Math.sin(game.frame*0.15)*0.2)*game.params.ringFactor;
       ctx.strokeStyle=s.color; ctx.lineWidth=2;
       ctx.shadowBlur=15; ctx.shadowColor=s.color;
       ctx.beginPath(); ctx.arc(laneX(s.lane),s.y,s.size*1.6,0,Math.PI*2); ctx.stroke();
@@ -1246,7 +1352,7 @@ function showFlash(text,color='#00f5ff'){
   el.style.background=`rgba(${hexRgb(color)},0.12)`;
   el.classList.add('show');
   if(flashTimer) clearTimeout(flashTimer);
-  flashTimer=setTimeout(()=>el.classList.remove('show'),1200);
+  flashTimer=setTimeout(()=>el.classList.remove('show'),900);
 }
 
 // ═══════════════════════════════════════════════════════
