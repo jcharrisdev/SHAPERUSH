@@ -203,6 +203,16 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 }
 #btnMute.hidden{display:none;}
 
+/* DIRECTION CHANGE */
+#dirAlert{position:fixed;top:172px;left:50%;transform:translateX(-50%);z-index:36;width:92%;max-width:380px;text-align:center;pointer-events:none;display:none;}
+#dirAlert.show{display:block;animation:alertPulse 0.45s ease-in-out infinite alternate;}
+.dir-title{font-family:'Orbitron',monospace;font-weight:900;font-size:1rem;letter-spacing:3px;color:var(--pink);text-shadow:0 0 16px var(--pink);}
+.dir-sub{font-size:0.66rem;letter-spacing:2px;color:rgba(255,255,255,0.78);margin-top:6px;line-height:1.7;}
+@keyframes alertPulse{from{opacity:0.65;}to{opacity:1;}}
+#turnFlash{position:fixed;inset:0;z-index:34;background:#fff;opacity:0;pointer-events:none;}
+#turnFlash.go{animation:turnFlash 0.28s ease-out;}
+@keyframes turnFlash{0%{opacity:0.5;}100%{opacity:0;}}
+
 /* COMBO HUD */
 #comboHud{
   position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:30;
@@ -259,6 +269,8 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 
 <!-- ══ FLASH ══ -->
 <div id="flashMsg"></div>
+<div id="dirAlert"><div class="dir-title">⚠ DIRECTION CHANGE</div><div class="dir-sub" id="dirSub"></div></div>
+<div id="turnFlash"></div>
 
 <!-- ══════════════════════════════════════
      SCREEN: WELCOME / LOGIN
@@ -356,6 +368,15 @@ const CONFIG = {
   HIT_Y_PX: 36,                // vertical catch window
   GAME_OVER_DELAY_FRAMES: 30,  // short beat between last life lost and game over screen
   START_LIVES: 3,
+  MAX_LANE_SPAN_PX: 520,       // lanes never spread wider than this (keeps wide screens playable)
+  REFERENCE_TRAVEL_PX: 800,    // fall speed is scaled by travel length so crossing time is equal in every direction
+  DIRECTION: {
+    ENABLED: true,
+    FIRST_AT_SHAPES: 12,       // first direction change after this many catches
+    GAP_SHAPES: [10, 16],      // then every N..M catches
+    ALERT_FRAMES: 120,         // warning time (~2s); new shapes stop spawning meanwhile
+    POST_SWITCH_SPAWN_DELAY: 40,
+  },
 
   // Score = BASE_SCORE * comboMultiplier * precisionMultiplier
   BASE_SCORE: 100,
@@ -483,6 +504,52 @@ const ComboManager = {
   },
 };
 
+// ═══════════════════════════════════════════════════════
+//  WORLD — game logic always runs "shapes fall down, lanes run left→right".
+//  Other directions are the same world rotated when drawn, so collisions,
+//  spawning and difficulty never need to know about direction.
+// ═══════════════════════════════════════════════════════
+const DIRECTIONS = {
+  // dir = where shapes travel on screen. `keys` map a screen direction to a lane step;
+  // `jump` is the screen direction that hops towards where shapes come from.
+  down:  { angle: 0,            vec: [0, 1],  swap: false, from: 'TOP',    keys: { left: -1, right: 1 }, jump: 'up',    hint: '← → MOVE · ↑ JUMP' },
+  up:    { angle: Math.PI,      vec: [0, -1], swap: false, from: 'BOTTOM', keys: { left: 1, right: -1 }, jump: 'down',  hint: '← → MOVE · ↓ JUMP' },
+  left:  { angle: Math.PI / 2,  vec: [-1, 0], swap: true,  from: 'RIGHT',  keys: { up: -1, down: 1 },    jump: 'right', hint: '↑ ↓ MOVE · → JUMP' },
+  right: { angle: -Math.PI / 2, vec: [1, 0],  swap: true,  from: 'LEFT',   keys: { up: 1, down: -1 },    jump: 'left',  hint: '↑ ↓ MOVE · ← JUMP' },
+};
+let world = null;
+
+function geometry(dir) {
+  const D = DIRECTIONS[dir], W = canvas.width, H = canvas.height;
+  const w = D.swap ? H : W, h = D.swap ? W : H;      // logical lateral / travel extents
+  const span = Math.min(w, CONFIG.MAX_LANE_SPAN_PX);
+  return { dir, ...D, W, H, w, h, span, offset: (w - span) / 2, laneW: span / LANE_COUNT, scale: h / CONFIG.REFERENCE_TRAVEL_PX };
+}
+/** Logical world point → screen pixel. */
+function toScreen(x, y, g = world) {
+  switch (g.dir) {
+    case 'up':    return [g.W - x, g.H - y];
+    case 'left':  return [g.W - y, x];
+    case 'right': return [y, g.H - x];
+    default:      return [x, y];
+  }
+}
+function applyWorldTransform(g = world) {
+  switch (g.dir) {
+    case 'up':    ctx.translate(g.W, g.H); ctx.rotate(Math.PI); break;
+    case 'left':  ctx.translate(g.W, 0);   ctx.rotate(Math.PI / 2); break;
+    case 'right': ctx.translate(0, g.H);   ctx.rotate(-Math.PI / 2); break;
+  }
+}
+const playerBaseY = (g = world) => g.h * 0.78;
+function setWorld(dir) {
+  world = geometry(dir);
+  if (game.player) {
+    game.player.baseY = playerBaseY();
+    if (!game.player.jumping) game.player.y = game.player.baseY;
+  }
+}
+
 const lerp = (a, b, t) => a + (b - a) * t;
 const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
@@ -545,6 +612,66 @@ const DifficultyManager = {
   syncGame() { game.speed = game.params.speed; game.spawnRate = game.params.spawnRate; },
 };
 
+const DirectionManager = {
+  reset() {
+    game.alert = null;
+    game.directionChanges = 0;
+    game.nextChangeShapes = CONFIG.DIRECTION.FIRST_AT_SHAPES;
+    this.hideAlert();
+  },
+
+  /** Called after every catch: warn once the run has advanced far enough. */
+  onCatch() {
+    if (!CONFIG.DIRECTION.ENABLED || game.alert || game.over) return;
+    if (game.correctCount >= game.nextChangeShapes) this.startAlert();
+  },
+
+  startAlert() {
+    const options = Object.keys(DIRECTIONS).filter(d => d !== world.dir);
+    const to = options[Math.floor(Math.random() * options.length)];
+    game.alert = { to, frames: CONFIG.DIRECTION.ALERT_FRAMES, shown: null };
+    AudioManager.play('alert');
+    document.getElementById('dirAlert').classList.add('show');
+    this.renderCountdown();
+  },
+
+  renderCountdown() {
+    const a = game.alert, D = DIRECTIONS[a.to];
+    const secs = Math.ceil(a.frames / 60);
+    if (a.shown === secs) return;
+    a.shown = secs;
+    document.getElementById('dirSub').innerHTML = `SHAPES WILL COME FROM THE ${D.from} IN ${secs}<br>${D.hint}`;
+  },
+
+  hideAlert() { document.getElementById('dirAlert').classList.remove('show'); },
+
+  tick() {
+    if (!game.alert) return;
+    if (--game.alert.frames <= 0) this.commit();
+    else this.renderCountdown();
+  },
+
+  /** Rotate the world. Shapes still in flight vanish without penalty; spawning resumes after a short beat. */
+  commit() {
+    const { to } = game.alert;
+    const [minGap, maxGap] = CONFIG.DIRECTION.GAP_SHAPES;
+    game.alert = null;
+    this.hideAlert();
+    setWorld(to);
+    const p = game.player;
+    p.jumping = false; p.vy = 0; p.rotation = 0;
+    p.y = p.baseY;
+    p.currentX = laneX(p.targetLane);
+    game.fallingShapes = []; game.floaters = []; game.particles = []; game.trails = []; game.explosions = [];
+    game.nextSpawnFrame = game.frame + CONFIG.DIRECTION.POST_SWITCH_SPAWN_DELAY;
+    game.nextChangeShapes = game.correctCount + minGap + Math.floor(Math.random() * (maxGap - minGap + 1));
+    game.directionChanges++;
+    const flash = document.getElementById('turnFlash');
+    flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
+    AudioManager.play('turn');
+  },
+};
+
 const ScoreManager = {
   precisionFor(offset) {
     const name = offset <= CONFIG.PERFECT_THRESHOLD ? 'PERFECT' : offset <= CONFIG.GREAT_THRESHOLD ? 'GREAT' : 'GOOD';
@@ -600,10 +727,7 @@ window.addEventListener('DOMContentLoaded', () => {
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  if (game.player) {
-    game.player.baseY = canvas.height * 0.78;
-    if (!game.player.jumping) game.player.y = game.player.baseY;
-  }
+  setWorld(world ? world.dir : 'down');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -870,12 +994,13 @@ function hexRgb(hex){return`${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(
 // ═══════════════════════════════════════════════════════
 //  GAME INIT
 // ═══════════════════════════════════════════════════════
-function laneX(lane) { return (canvas.width / LANE_COUNT) * lane + (canvas.width / LANE_COUNT) / 2; }
+function laneX(lane, g = world) { return g.offset + g.laneW * (lane + 0.5); }
 
 function startGame() {
   if (raf) cancelAnimationFrame(raf);
   if (menuRaf) cancelAnimationFrame(menuRaf);
   show(null); // hide all screens
+  setWorld('down');
 
   const theme = selectedTheme;
   const oneLife = Profile.get('oneLife');
@@ -900,7 +1025,7 @@ function startGame() {
       lane: 1, targetLane: 1,
       entity, color,
       y: 0, vy: 0, jumping: false,
-      baseY: canvas.height * 0.78,
+      baseY: playerBaseY(),
       scale: 1, scaleAnim: 0,
       invincible: 0, wobble: 0,
       rotation: 0,
@@ -911,6 +1036,7 @@ function startGame() {
   game.player.y = game.player.baseY;
   game.player.currentX = laneX(1);
   DifficultyManager.reset();
+  DirectionManager.reset();
   if (Profile.get('totalGames') < CONFIG.INTRO_HINT_GAMES) showFlash('CATCH THE SHAPE BELOW ↓', '#00f5ff');
 
   updateHUD();
@@ -928,10 +1054,11 @@ function loop(now) {
   // Fixed 60Hz simulation: game speed is identical on 60/120/144Hz displays.
   accumulator += Math.min(now - lastFrameTime, CONFIG.MAX_FRAME_MS);
   lastFrameTime = now;
-  while (accumulator >= CONFIG.STEP_MS) {
+  while (game.running && accumulator >= CONFIG.STEP_MS) {
     step();
     accumulator -= CONFIG.STEP_MS;
   }
+  if (!game.running) return;   // the run ended during this frame
   draw();
   raf = requestAnimationFrame(loop);
 }
@@ -941,7 +1068,8 @@ function step() {
 
   if (!game.over) {
     DifficultyManager.tick();
-    if (game.frame >= game.nextSpawnFrame) spawnWave();
+    DirectionManager.tick();
+    if (!game.alert && game.frame >= game.nextSpawnFrame) spawnWave();
   } else if (--game.overTimer <= 0) {
     endGame();
     return;
@@ -1045,8 +1173,8 @@ function spawnFallingShape(lane) {
 
 function spawnBgParticle() {
   game.bgParticles.push({
-    x: Math.random() * canvas.width,
-    y: canvas.height + 10,
+    x: Math.random() * world.w,
+    y: world.h + 10,
     vy: -(Math.random()*1.5+0.5),
     vx: (Math.random()-0.5)*0.5,
     r: Math.random()*2+0.5,
@@ -1125,13 +1253,13 @@ function spawnLandDust() {
   }
 }
 
-function laneWidth() { return canvas.width / LANE_COUNT; }
+function laneWidth(g = world) { return g.laneW; }
 
 function updateShapes() {
   const p = game.player;
   for (let i = game.fallingShapes.length - 1; i >= 0; i--) {
     const s = game.fallingShapes[i];
-    s.y += game.speed;
+    s.y += game.speed * world.scale;
     s.rotation += s.rotSpeed;
     s.scalePhase += s.wobbleSpeed;
     s.scale = 1 + Math.sin(s.scalePhase) * 0.08;
@@ -1160,7 +1288,7 @@ function updateShapes() {
       s.passed = true;
       if (isTarget(s) && !game.over) onMissedTarget(s);
     }
-    if (s.y > canvas.height + 60) game.fallingShapes.splice(i, 1);
+    if (s.y > world.h + 60) game.fallingShapes.splice(i, 1);
   }
 }
 
@@ -1189,9 +1317,9 @@ function onCatch(s, offset) {
   const tierColor = COMBO_COLORS[ComboManager.tierIndex(game.combo)];
   const SH = CONFIG.SCREEN_SHAKE_AMOUNT;
   game.shake = Math.max(game.shake || 0, tierUp ? SH.TIER_UP : perfect ? SH.PERFECT : SH.CATCH);
-  Fx.floatText(p.currentX, p.y - 60, '+' + gain, tierColor, 26);
-  Fx.floatText(p.currentX, p.y - 88, precision.name, perfect ? '#ffffff' : 'rgba(255,255,255,0.7)', 15);
-  if (tierUp) Fx.floatText(p.currentX, p.y - 122, 'COMBO x' + mult, tierColor, 22, 1.25);
+  Fx.floatText(p.currentX, p.y, '+' + gain, tierColor, 26, 1, -60);
+  Fx.floatText(p.currentX, p.y, precision.name, perfect ? '#ffffff' : 'rgba(255,255,255,0.7)', 15, 1, -88);
+  if (tierUp) Fx.floatText(p.currentX, p.y, 'COMBO x' + mult, tierColor, 22, 1.25, -122);
 
   const milestone = CONFIG.MILESTONES.includes(game.correctCount);
   if (milestone) {
@@ -1203,7 +1331,7 @@ function onCatch(s, offset) {
   if (newBestNow) {
     game.newBest = true;
     showFlash('NEW BEST!', '#ffbe0b');
-    Fx.floatText(p.currentX, p.y - 150, 'NEW BEST!', '#ffbe0b', 20, 1.25);
+    Fx.floatText(p.currentX, p.y, 'NEW BEST!', '#ffbe0b', 20, 1.25, -150);
   }
   AudioManager.play(newBestNow ? 'newRecord' : tierUp ? 'comboUp' : milestone ? 'milestone' : perfect ? 'perfect' : 'correct');
 
@@ -1211,6 +1339,7 @@ function onCatch(s, offset) {
   p.entity = next.entity;
   p.color  = next.color;
 
+  DirectionManager.onCatch();
   updateHUD(tierUp ? 'pop' : null);
   updateHint();
 }
@@ -1223,7 +1352,7 @@ function onWrongHit(s) {
   DifficultyManager.onError();
   spawnExplosion(p.currentX, p.y, s.color);
   AudioManager.play('error');
-  Fx.floatText(p.currentX, p.y - 60, 'OUCH', '#ff006e', 22);
+  Fx.floatText(p.currentX, p.y, 'OUCH', '#ff006e', 22, 1, -60);
   p.invincible = 90; p.wobble = 24;
   game.lives--;
   updateHUD(hadCombo ? 'lost' : null);
@@ -1238,8 +1367,7 @@ function onMissedTarget(s) {
   DifficultyManager.onError();
   const near = s.closestGap <= CONFIG.NEAR_MISS_PX;
   AudioManager.play('miss');
-  const x = Math.min(Math.max(laneX(s.lane), 60), canvas.width - 60);
-  Fx.floatText(x, game.player.baseY + 70, near ? 'SO CLOSE' : 'MISSED', near ? '#ffbe0b' : 'rgba(255,255,255,0.55)', near ? 20 : 16);
+  Fx.floatText(laneX(s.lane), game.player.baseY + 70, near ? 'SO CLOSE' : 'MISSED', near ? '#ffbe0b' : 'rgba(255,255,255,0.55)', near ? 20 : 16);
   updateHUD(hadCombo ? 'lost' : null);
 }
 
@@ -1284,7 +1412,11 @@ function draw() {
   ctx.save();
   ctx.translate(sx, sy);
 
-  drawBackground();
+  drawSpace();                       // screen space: backdrop + stars drifting with the travel direction
+
+  ctx.save();
+  applyWorldTransform();             // world space: everything that has a lane
+  drawLanes();
   drawBgParticles();
   drawLaneHighlights();
   drawShapeTrails();
@@ -1293,38 +1425,44 @@ function draw() {
   drawExplosions();
   drawParticles();
   drawPlayer();
+  ctx.restore();
+
+  drawDirectionAlert();
   Fx.draw();
 
   ctx.restore();
 }
 
-function drawBackground() {
-  // Deep space gradient
+function drawSpace() {
   const grad = ctx.createLinearGradient(0,0,0,canvas.height);
   grad.addColorStop(0,'#04040f');
   grad.addColorStop(1,'#080820');
   ctx.fillStyle = grad;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // Stars
+  const [vx, vy] = world.vec;
   for(const s of stars){
     s.twinkle+=0.015;
     const a=s.alpha+Math.sin(s.twinkle)*0.1;
     ctx.fillStyle=`rgba(255,255,255,${Math.max(0,a)})`;
     ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
-    s.y+=s.speed*0.3;
-    if(s.y>canvas.height){s.y=0;s.x=Math.random()*canvas.width;}
+    s.x+=vx*s.speed*0.3*2; s.y+=vy*s.speed*0.3*2;
+    if(s.y>canvas.height) { s.y=0; s.x=Math.random()*canvas.width; }
+    else if(s.y<0)        { s.y=canvas.height; s.x=Math.random()*canvas.width; }
+    if(s.x>canvas.width)  { s.x=0; s.y=Math.random()*canvas.height; }
+    else if(s.x<0)        { s.x=canvas.width; s.y=Math.random()*canvas.height; }
   }
+}
 
-  // Lane lines
-  const lw = canvas.width/LANE_COUNT;
+function drawLanes() {
+  const lw = world.laneW;
   for(let i=1;i<LANE_COUNT;i++){
     ctx.save();
     ctx.strokeStyle='rgba(255,255,255,0.05)';
     ctx.lineWidth=1;
     ctx.setLineDash([16,28]);
     ctx.lineDashOffset=-(game.frame*2.5%44);
-    ctx.beginPath(); ctx.moveTo(lw*i,0); ctx.lineTo(lw*i,canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(world.offset+lw*i,0); ctx.lineTo(world.offset+lw*i,world.h); ctx.stroke();
     ctx.restore();
   }
 
@@ -1334,12 +1472,36 @@ function drawBackground() {
   grd.addColorStop(0,'transparent');
   grd.addColorStop(0.5,`rgba(${hexRgb(game.player.color)},0.25)`);
   grd.addColorStop(1,'transparent');
-  ctx.fillStyle=grd; ctx.fillRect(0,gy-20,canvas.width,40);
+  ctx.fillStyle=grd; ctx.fillRect(0,gy-20,world.w,40);
 
   ctx.strokeStyle=`rgba(${hexRgb(game.player.color)},0.4)`;
   ctx.lineWidth=2; ctx.shadowBlur=12; ctx.shadowColor=game.player.color;
-  ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(canvas.width,gy); ctx.stroke();
+  ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(world.w,gy); ctx.stroke();
   ctx.shadowBlur=0;
+}
+
+/** Warning while a direction change is pending: arrows where shapes will enter, and where you will be. */
+function drawDirectionAlert() {
+  const a = game.alert;
+  if (!a) return;
+  const g = geometry(a.to), p = game.player;
+  const pulse = 0.5 + 0.5 * Math.sin(game.frame * 0.25);
+  ctx.save();
+  ctx.fillStyle = '#ff006e'; ctx.shadowColor = '#ff006e'; ctx.shadowBlur = 14;
+  const heading = Math.atan2(g.vec[1], g.vec[0]);
+  for (let l = 0; l < LANE_COUNT; l++) {
+    const [sx, sy] = toScreen(laneX(l, g), 30 + (game.frame * 2.2) % 50, g);
+    ctx.save();
+    ctx.translate(sx, sy); ctx.rotate(heading);
+    ctx.globalAlpha = 0.35 + 0.4 * pulse;
+    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-10, -13); ctx.lineTo(-10, 13); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  const [gx, gy] = toScreen(laneX(p.targetLane, g), playerBaseY(g), g);
+  ctx.globalAlpha = 0.45 + 0.4 * pulse; ctx.shadowBlur = 0;
+  ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.arc(gx, gy, 36, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
 }
 
 function drawBgParticles() {
@@ -1352,12 +1514,12 @@ function drawBgParticles() {
 
 function drawLaneHighlights() {
   // Subtle lane hover glow under player
-  const lw=canvas.width/LANE_COUNT;
+  const lw=world.laneW;
   const px=game.player.currentX;
   const grad=ctx.createRadialGradient(px,game.player.baseY+32,0,px,game.player.baseY+32,lw*0.6);
   grad.addColorStop(0,`rgba(${hexRgb(game.player.color)},0.08)`);
   grad.addColorStop(1,'transparent');
-  ctx.fillStyle=grad; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle=grad; ctx.fillRect(0,0,world.w,world.h);
 }
 
 function drawShapeTrails() {
@@ -1375,7 +1537,7 @@ function drawShapeTrails() {
 
 function drawFallingShapes() {
   for(const s of game.fallingShapes){
-    drawEntity(ctx,game.theme,s.entity,laneX(s.lane),s.y,s.size*s.scale,s.color,1,true,s.rotation);
+    drawEntity(ctx,game.theme,s.entity,laneX(s.lane),s.y,s.size*s.scale,s.color,1,true,s.rotation-world.angle);
 
     // Match indicator glow ring
     if(isTarget(s)){
@@ -1410,7 +1572,7 @@ function drawPlayer() {
   const grad=ctx.createRadialGradient(p.currentX,p.baseY+20,0,p.currentX,p.baseY+20,38);
   grad.addColorStop(0,`rgba(${hexRgb(p.color)},${a})`);
   grad.addColorStop(1,'transparent');
-  ctx.fillStyle=grad; ctx.fillRect(0,p.baseY-20,canvas.width,80);
+  ctx.fillStyle=grad; ctx.fillRect(0,p.baseY-20,world.w,80);
 
   // Invincible flash
   const alpha=p.invincible>0?0.3+Math.sin(p.invincible*0.45)*0.5:1;
@@ -1418,7 +1580,7 @@ function drawPlayer() {
   ctx.save();
   ctx.translate(p.currentX+wx,p.y);
   ctx.scale(p.scale*(1-(p.squash||0)*0.5), p.scale*(1+(p.squash||0)*0.5));
-  drawEntity(ctx,game.theme,p.entity,0,0,28,p.color,alpha,true,p.rotation);
+  drawEntity(ctx,game.theme,p.entity,0,0,28,p.color,alpha,true,p.rotation-world.angle);
 
   // Shield ring when invincible
   if(p.invincible>0){
@@ -1510,6 +1672,8 @@ const AudioManager = (() => {
     comboUp:   { pri: 3, type: 'square',   vol: 0.45, notes: [[523, 0, 0.07], [659, 0.06, 0.07], [784, 0.12, 0.1]] },
     miss:      { pri: 1, type: 'sine',     vol: 0.6, notes: [[300, 0, 0.12, 200]] },
     error:     { pri: 4, type: 'sawtooth', vol: 0.55, notes: [[190, 0, 0.22, 80]] },
+    alert:     { pri: 4, type: 'square',   vol: 0.45, notes: [[880, 0, 0.12], [880, 0.2, 0.12], [1174, 0.4, 0.18]] },
+    turn:      { pri: 3, type: 'sawtooth', vol: 0.45, notes: [[280, 0, 0.22, 900]] },
     newRecord: { pri: 5, type: 'triangle', vol: 1.0, notes: [[523, 0, 0.1], [659, 0.1, 0.1], [784, 0.2, 0.1], [1047, 0.3, 0.25]] },
     gameOver:  { pri: 5, type: 'sawtooth', vol: 0.5, notes: [[392, 0, 0.16], [330, 0.16, 0.16], [262, 0.32, 0.3, 200]] },
   };
@@ -1550,9 +1714,10 @@ const AudioManager = (() => {
 //  EFFECTS — floating text (canvas-drawn, short and non-blocking)
 // ═══════════════════════════════════════════════════════
 const Fx = {
-  floatText(x, y, text, color, size, popScale = 1) {
+  /** (x, y) = world anchor; `dy` = extra screen-space offset so stacked text never depends on direction. */
+  floatText(x, y, text, color, size, popScale = 1, dy = 0) {
     if (game.floaters.length >= CONFIG.MAX_FLOATERS) game.floaters.shift();
-    game.floaters.push({ x, y, text, color, size, popScale, age: 0 });
+    game.floaters.push({ x, y, dy, text, color, size, popScale, age: 0 });
   },
   update() {
     for (let i = game.floaters.length - 1; i >= 0; i--) {
@@ -1563,10 +1728,12 @@ const Fx = {
     for (const f of game.floaters) {
       const t = f.age / CONFIG.FLOATER_FRAMES;
       const pop = t < 0.18 ? 0.6 + 0.4 * easeOutBack(t / 0.18) * f.popScale : 1;   // quick pop-in
-      const x = Math.min(Math.max(f.x, 70), canvas.width - 70);
+      const [ax, ay] = toScreen(f.x, f.y);
+      const x = Math.min(Math.max(ax, 70), canvas.width - 70);
+      const y = Math.min(Math.max(ay + f.dy - easeOutCubic(t) * 34, 100), canvas.height - 30);
       ctx.save();
       ctx.globalAlpha = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
-      ctx.translate(x, f.y - easeOutCubic(t) * 34);
+      ctx.translate(x, y);
       ctx.scale(pop, pop);
       ctx.font = `900 ${f.size}px Orbitron, monospace`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1584,36 +1751,44 @@ function easeOutBack(t) { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1
 // ═══════════════════════════════════════════════════════
 //  TOUCH CONTROLS
 // ═══════════════════════════════════════════════════════
+function moveLane(delta) {
+  const p = game.player;
+  p.targetLane = Math.min(LANE_COUNT - 1, Math.max(0, p.targetLane + delta));
+}
+function jump() {
+  const p = game.player;
+  if (!p.jumping) { p.jumping = true; p.vy = -17; }
+}
+/** `screenDir` = what the player did on screen; the current travel direction decides what it means. */
+function handleIntent(screenDir) {
+  const D = DIRECTIONS[world.dir];
+  if (screenDir === D.jump) jump();
+  else if (D.keys[screenDir] !== undefined) moveLane(D.keys[screenDir]);
+}
+
 function setupTouchControls() {
-  let tx=0,ty=0,tt=0;
+  let tx=0,ty=0;
   canvas.addEventListener('touchstart',(e)=>{
     e.preventDefault();
-    const t=e.touches[0]; tx=t.clientX; ty=t.clientY; tt=Date.now();
+    const t=e.touches[0]; tx=t.clientX; ty=t.clientY;
   },{passive:false});
 
   canvas.addEventListener('touchend',(e)=>{
     e.preventDefault();
     if(!game.running) return;
     const t=e.changedTouches[0];
-    const dx=t.clientX-tx, dy=t.clientY-ty, dt=Date.now()-tt;
-
-    // Swipe up = jump
-    if(dy<-50&&Math.abs(dy)>Math.abs(dx)&&dt<350){
-      if(!game.player.jumping){ game.player.jumping=true; game.player.vy=-17; }
-      return;
-    }
-    // Tap or swipe left/right
-    if(Math.abs(dx)<50&&Math.abs(dy)<50){
-      // tap
-      if(t.clientX < canvas.width/2) game.player.targetLane=Math.max(0,game.player.targetLane-1);
-      else game.player.targetLane=Math.min(LANE_COUNT-1,game.player.targetLane+1);
-    } else if(Math.abs(dx)>40){
-      if(dx<0) game.player.targetLane=Math.max(0,game.player.targetLane-1);
-      else game.player.targetLane=Math.min(LANE_COUNT-1,game.player.targetLane+1);
+    const dx=t.clientX-tx, dy=t.clientY-ty;
+    if (Math.abs(dx) < 45 && Math.abs(dy) < 45) {
+      // Tap: the half of the screen you touch is the way you move (top/bottom when shapes travel sideways)
+      handleIntent(DIRECTIONS[world.dir].swap ? (t.clientY < innerHeight / 2 ? 'up' : 'down')
+                                              : (t.clientX < innerWidth / 2 ? 'left' : 'right'));
+    } else {
+      handleIntent(Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down'));
     }
   },{passive:false});
 
   // Keyboard
+  const KEY_DIR = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down' };
   document.addEventListener('keydown',(e)=>{
     if (document.activeElement.tagName !== 'INPUT') {
       if (e.key === 'D') toggleDebug();  // Shift+D
@@ -1623,9 +1798,8 @@ function setupTouchControls() {
     }
     if(!game.running || e.shiftKey) return;
     const k = e.key.toLowerCase();
-    if(k==='arrowleft'||k==='a') game.player.targetLane=Math.max(0,game.player.targetLane-1);
-    if(k==='arrowright'||k==='d') game.player.targetLane=Math.min(LANE_COUNT-1,game.player.targetLane+1);
-    if((k==='arrowup'||k==='w'||k===' ')&&!game.player.jumping){game.player.jumping=true;game.player.vy=-17;}
+    if (k === ' ') { e.preventDefault(); jump(); }
+    else if (KEY_DIR[k]) { e.preventDefault(); handleIntent(KEY_DIR[k]); }
   });
 }
 
@@ -1648,9 +1822,11 @@ function recordRunStats() {
 let retryLockedUntil = 0;
 
 function endGame() {
+  if (!game.running) return;
   game.running = false;
   if (raf) { cancelAnimationFrame(raf); raf = null; }
 
+  DirectionManager.hideAlert();
   const previousBest = game.bestAtStart;
   const beatBest = previousBest > 0 && game.score > previousBest;
   const best = Math.max(previousBest, game.score);
@@ -1723,6 +1899,7 @@ function renderDebug() {
   el.textContent =
     `score      ${game.score}\n` +
     `time       ${((performance.now() - game.startedAt) / 1000).toFixed(1)}s\n` +
+    `direction  ${world.dir}  changes ${game.directionChanges}${game.alert ? '  (alert→' + game.alert.to + ')' : ''}\n` +
     `difficulty ${game.difficulty.toFixed(3)}  ${CONFIG.PHASES[game.phase].name}${DifficultyManager.isStruggling() ? ' (held)' : ''}\n` +
     `speed      ${game.speed.toFixed(2)}   spawn ${game.spawnRate}\n` +
     `target%    ${(P.targetChance * 100).toFixed(0)}  lookalike ${(P.lookalikeChance * 100).toFixed(0)}  double ${(P.doubleChance * 100).toFixed(0)}\n` +
