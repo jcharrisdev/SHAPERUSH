@@ -399,6 +399,7 @@ const CONFIG = {
     SHOT: { EVERY: 8, SPEED: 13, DAMAGE: 1, RADIUS: 5 },       // automatic fire
     POWER: { DAMAGE: 18, SPEED: 15, RADIUS: 17 },              // fired after catching the glowing shape
     GIFT: { EVERY: 190, SPEED: 2.4, CATCH_RADIUS: 36 },
+    HEART: { EVERY: 600, AFTER_HIT: 240, SPEED: 2.0, CATCH_RADIUS: 32 },   // +1 life; only dropped while you are missing one
     PLAYER: { HURT_RADIUS: 9, KEY_SPEED: 6.5, MAX_STEP: 24, MARGIN: 26, BOTTOM_MARGIN: 90 },
     BULLET: { SIZE: 13, HURT_FACTOR: 0.72, MAX: 150 },
     PHASE_AT: [0.66, 0.33],    // hp fractions where the boss changes pattern
@@ -1635,10 +1636,30 @@ function drawDirectionAlert() {
 }
 
 function drawBossScene() {
+  drawHearts();
   drawGifts();
   drawBoss();
   drawBossBullets();
   drawShots();
+}
+
+function drawHearts() {
+  for (const h of game.hearts) {
+    const pulse = 0.5 + 0.5 * Math.sin(game.frame * 0.2);
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.scale(1 + 0.08 * pulse, 1 + 0.08 * pulse);
+    ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = 22;
+    ctx.fillStyle = '#ff4d6d';
+    ctx.beginPath();                                  // heart: two lobes and a point
+    ctx.moveTo(0, 12);
+    ctx.bezierCurveTo(-22, -4, -14, -22, 0, -10);
+    ctx.bezierCurveTo(14, -22, 22, -4, 0, 12);
+    ctx.fill();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 0.6; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(-7, -9, 3.5, 2.2, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
 }
 
 function drawGifts() {
@@ -2050,7 +2071,7 @@ const BossManager = {
     game.mode = 'boss';
     game.alert = null;
     game.fallingShapes = []; game.floaters = []; game.trails = []; game.particles = []; game.explosions = [];
-    game.bullets = []; game.shots = []; game.gifts = [];
+    game.bullets = []; game.shots = []; game.gifts = []; game.hearts = [];
     game.bossHits = 0;
     game.lives = game.maxLives;
     game.combo = 0;
@@ -2061,7 +2082,7 @@ const BossManager = {
     p.currentX = world.w / 2; p.y = b.y1 - 20; p.tx = p.currentX; p.ty = p.y;
     game.boss = {
       hp: B.HP, maxHp: B.HP, x: world.w / 2, y: -this.height(), t: 0, state: 'intro', introLeft: B.INTRO_FRAMES,
-      flash: 0, phase: 0, dying: 0, fireCd: 0, giftCd: B.GIFT.EVERY * 0.6,
+      flash: 0, phase: 0, dying: 0, fireCd: 0, giftCd: B.GIFT.EVERY * 0.6, heartCd: B.HEART.EVERY,
       cd: { aimed: 60, fan: 60, stream: 30 },
     };
     document.getElementById('dirTitle').textContent = 'BOSS FIGHT';
@@ -2111,6 +2132,7 @@ const BossManager = {
       if (phase !== b.phase) this.shiftPhase(phase);
       this.attacks(b, bh);
       this.spawnGift(b, bh);
+      this.spawnHeart(b, bh);
       this.autoFire();
     } else if (b.state === 'dying') {
       b.dying++;
@@ -2124,6 +2146,7 @@ const BossManager = {
     this.updateShots(b, bw, bh);
     this.updateBullets();
     this.updateGifts();
+    this.updateHearts();
   },
 
   shiftPhase(phase) {
@@ -2225,6 +2248,7 @@ const BossManager = {
           Math.hypot(bl.x - p.currentX, bl.y - p.y) < B.PLAYER.HURT_RADIUS + bl.size * B.BULLET.HURT_FACTOR) {
         game.bullets.splice(i, 1);
         game.bossHits++;
+        game.boss.heartCd = Math.min(game.boss.heartCd, B.HEART.AFTER_HIT);   // hurt: help is on the way
         onWrongHit(bl);
       }
     }
@@ -2246,6 +2270,33 @@ const BossManager = {
     }
   },
 
+  /** The boss drops a heart now and then, but only while you are missing a life. */
+  spawnHeart(b, bh) {
+    const H = CONFIG.BOSS.HEART;
+    if (game.lives >= game.maxLives) { b.heartCd = Math.max(b.heartCd, H.AFTER_HIT); return; }   // nothing to heal: keep the timer parked
+    if (--b.heartCd > 0 || game.hearts.length) return;
+    b.heartCd = H.EVERY;
+    const m = CONFIG.BOSS.PLAYER.MARGIN + 20;
+    game.hearts.push({ x: m + Math.random() * (world.w - 2 * m), y: b.y + bh * 0.5, born: game.frame });
+  },
+
+  updateHearts() {
+    const H = CONFIG.BOSS.HEART, p = game.player;
+    for (let i = game.hearts.length - 1; i >= 0; i--) {
+      const h = game.hearts[i];
+      h.y += H.SPEED;
+      h.x += Math.sin((game.frame - h.born) * 0.06) * 0.7;       // gentle sway
+      if (!game.over && game.lives < game.maxLives && Math.hypot(h.x - p.currentX, h.y - p.y) < H.CATCH_RADIUS) {
+        game.hearts.splice(i, 1);
+        game.lives++;
+        spawnParticles(h.x, h.y, '#ff4d6d', 14);
+        Fx.floatText(p.currentX, p.y, '+1 ❤', '#ff4d6d', 24, 1.25, -70);
+        AudioManager.play('perfect');
+        updateHUD();
+      } else if (h.y > world.h + 40 || game.lives >= game.maxLives) game.hearts.splice(i, 1);
+    }
+  },
+
   powerShot(x, y) {
     const W = CONFIG.BOSS.POWER;
     game.shots.push({ x, y: y - 20, vy: -W.SPEED, r: W.RADIUS, dmg: W.DAMAGE, power: true, color: game.player.color });
@@ -2263,7 +2314,7 @@ const BossManager = {
     const b = game.boss;
     b.state = 'dying'; b.dying = 0;
     for (const bl of game.bullets) spawnParticles(bl.x, bl.y, bl.color, 5);
-    game.bullets = []; game.gifts = [];
+    game.bullets = []; game.gifts = []; game.hearts = [];
     game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.WRONG;
     AudioManager.play('boom');
     showFlash('BOSS DOWN!', '#06d6a0');
