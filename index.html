@@ -125,6 +125,8 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   flex-direction:column;gap:2px;
 }
 .theme-btn span{font-size:0.45rem;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;}
+.theme-btn.locked{opacity:0.4;}
+#themeHint{font-size:0.6rem;letter-spacing:1px;color:rgba(255,255,255,0.4);text-align:center;margin-top:10px;min-height:1em;}
 .theme-btn.active{border-color:var(--cyan);background:rgba(0,245,255,0.12);box-shadow:0 0 16px rgba(0,245,255,0.3);}
 
 /* STATS */
@@ -281,12 +283,8 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 
   <div class="card">
     <div class="card-title">Elige tu personaje</div>
-    <div class="themes" id="themePicker">
-      <button class="theme-btn active" data-theme="geo">⬡<span>Geo</span></button>
-      <button class="theme-btn" data-theme="emoji">😎<span>Emoji</span></button>
-      <button class="theme-btn" data-theme="pixel">👾<span>Pixel</span></button>
-      <button class="theme-btn" data-theme="neon">✦<span>Neon</span></button>
-    </div>
+    <div class="themes" id="themePicker"></div>
+    <div id="themeHint"></div>
   </div>
 
   <button class="btn btn-primary" id="btnStart">JUGAR</button>
@@ -424,16 +422,25 @@ const CONFIG = {
 const LANE_COUNT = CONFIG.LANE_COUNT;
 // Cosmetic themes. `unlockAt` = lifetime points on this device.
 const THEMES = {
-  geo:   { label: 'Geo',   icon: '⬡', unlockAt: 0 },
-  emoji: { label: 'Emoji', icon: '😎', unlockAt: 0 },
-  pixel: { label: 'Pixel', icon: '👾', unlockAt: 0 },
-  neon:  { label: 'Neon',  icon: '✦', unlockAt: 0 },
+  geo:   { label: 'Geo',   icon: '⬡',  unlockAt: 0 },
+  emoji: { label: 'Emoji', icon: '😎', unlockAt: 1500 },
+  pixel: { label: 'Pixel', icon: '👾', unlockAt: 3500 },
+  neon:  { label: 'Neon',  icon: '✦',  unlockAt: 5000 },
 };
-function unlockedThemeIds() {
+const isThemeUnlocked = id => Profile.get('totalScore') >= THEMES[id].unlockAt;
+function unlockedThemeIds() { return Object.keys(THEMES).filter(isThemeUnlocked); }
+
+function renderThemePicker() {
   const total = Profile.get('totalScore');
-  return Object.keys(THEMES).filter(id => total >= THEMES[id].unlockAt);
+  document.getElementById('themePicker').innerHTML = Object.entries(THEMES).map(([id, t]) => {
+    const locked = !isThemeUnlocked(id);
+    return `<button class="theme-btn ${id === selectedTheme ? 'active' : ''} ${locked ? 'locked' : ''}" data-theme="${id}">${locked ? '🔒' : t.icon}<span>${t.label}</span></button>`;
+  }).join('');
+  const next = Object.values(THEMES).filter(t => total < t.unlockAt).sort((a, b) => a.unlockAt - b.unlockAt)[0];
+  document.getElementById('themeHint').textContent = next
+    ? `TOTAL ${total.toLocaleString()} · ${next.label.toUpperCase()} UNLOCKS AT ${next.unlockAt.toLocaleString()}`
+    : 'ALL THEMES UNLOCKED';
 }
-function renderThemePicker() {}
 
 const COMBO_COLORS = ['#00f5ff', '#00f5ff', '#ffbe0b', '#ff8a00', '#ff006e'];  // by multiplier tier
 
@@ -584,7 +591,8 @@ window.addEventListener('DOMContentLoaded', () => {
   drawMenuBg();
   setupUI();
   document.getElementById('userInput').value = Profile.get('lastId');
-  selectTheme(Profile.get('theme'));
+  selectedTheme = isThemeUnlocked(Profile.get('theme')) ? Profile.get('theme') : 'geo';
+  renderThemePicker();
   if (new URLSearchParams(location.search).has('debug')) Profile.set('debug', true);
 });
 
@@ -642,8 +650,9 @@ function drawMenuBg() {
 // ═══════════════════════════════════════════════════════
 function setupUI() {
   // Theme picker
-  document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.addEventListener('click', () => selectTheme(btn.dataset.theme));
+  document.getElementById('themePicker').addEventListener('click', e => {
+    const btn = e.target.closest('.theme-btn');
+    if (btn) selectTheme(btn.dataset.theme);
   });
 
   document.getElementById('btnStart').addEventListener('click', handleStart);
@@ -668,11 +677,15 @@ function setupUI() {
 }
 
 function selectTheme(theme) {
-  const btn = document.querySelector(`.theme-btn[data-theme="${theme}"]`);
-  if (!btn) return;
-  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b === btn));
+  if (!THEMES[theme]) return;
+  if (!isThemeUnlocked(theme)) {
+    document.getElementById('themeHint').textContent =
+      `REACH ${THEMES[theme].unlockAt.toLocaleString()} TOTAL POINTS TO UNLOCK ${THEMES[theme].label.toUpperCase()}`;
+    return;
+  }
   selectedTheme = theme;
   Profile.set('theme', theme);
+  renderThemePicker();
 }
 
 async function handleStart() {
