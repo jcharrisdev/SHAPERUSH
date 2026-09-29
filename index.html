@@ -34,8 +34,8 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 .hud-val{font-family:'Orbitron',monospace;font-weight:900;font-size:1.2rem;color:#fff;}
 #hudScore{text-shadow:0 0 14px var(--cyan);}
 #hudLives{font-size:1rem;letter-spacing:2px;}
-#hudLevel{text-shadow:0 0 14px var(--yellow);color:var(--yellow);}
-#hudUser{font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:1px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#hudBest{color:var(--yellow);text-shadow:0 0 14px rgba(255,190,11,0.5);}
+.hud-block{min-width:80px;}
 
 /* ── SHAPE HINT BAR ── */
 #hintBar{
@@ -174,16 +174,6 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 }
 #flashMsg.show{opacity:1;}
 
-/* COMBO DISPLAY */
-#comboDisplay{
-  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  z-index:40;font-family:'Orbitron',monospace;font-weight:900;
-  font-size:clamp(2rem,8vw,3.5rem);color:#fff;pointer-events:none;
-  text-align:center;line-height:1.1;
-  opacity:0;transition:opacity 0.15s;
-}
-#comboDisplay.show{opacity:1;}
-
 /* SCROLLABLE */
 .scroll-area{width:100%;max-height:220px;overflow-y:auto;scrollbar-width:none;}
 .scroll-area::-webkit-scrollbar{display:none;}
@@ -197,24 +187,34 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 }
 .tab.active{background:rgba(0,245,255,0.12);color:var(--cyan);border:1px solid rgba(0,245,255,0.3);}
 
-/* LEVEL UP BANNER */
-#levelUpBanner{
-  position:fixed;top:50%;left:0;right:0;transform:translateY(-50%);
-  z-index:55;text-align:center;pointer-events:none;
-  opacity:0;
-}
-#levelUpBanner h2{
-  font-family:'Orbitron',monospace;font-size:clamp(1.5rem,6vw,2.5rem);
-  color:var(--yellow);text-shadow:0 0 30px var(--yellow);letter-spacing:4px;
-}
-#levelUpBanner p{font-size:0.7rem;letter-spacing:3px;color:rgba(255,255,255,0.5);margin-top:4px;}
-
 /* PROGRESS BAR */
 #xpBar{
   position:fixed;top:56px;left:0;right:0;height:3px;z-index:29;
   background:rgba(255,255,255,0.06);
 }
-#xpFill{height:100%;background:linear-gradient(to right,var(--cyan),var(--purple));transition:width 0.4s ease;width:0%;}
+#xpFill{height:100%;background:linear-gradient(to right,var(--cyan),var(--purple));transition:width 0.2s ease-out;width:0%;}
+
+/* COMBO HUD */
+#comboHud{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:30;
+  display:flex;align-items:baseline;gap:8px;pointer-events:none;
+  font-family:'Orbitron',monospace;font-weight:900;
+}
+#comboMult{font-size:1.5rem;color:var(--cyan);text-shadow:0 0 14px var(--cyan);transition:color 0.2s;}
+#comboCount{font-size:0.62rem;letter-spacing:2px;color:rgba(255,255,255,0.45);}
+#comboHud.pop #comboMult{animation:comboPop 0.35s cubic-bezier(.2,1.6,.4,1);}
+@keyframes comboPop{0%{transform:scale(1.9);}100%{transform:scale(1);}}
+#comboHud.lost #comboMult{animation:comboLost 0.3s ease-out;}
+@keyframes comboLost{0%{transform:translateX(-6px);color:var(--pink);}50%{transform:translateX(6px);}100%{transform:translateX(0);}}
+
+/* RECORD HINT */
+#recordHint{
+  position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:30;
+  font-family:'Orbitron',monospace;font-size:0.6rem;letter-spacing:2px;font-weight:700;
+  color:var(--yellow);text-shadow:0 0 10px rgba(255,190,11,0.6);
+  white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.25s;
+}
+#recordHint.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -230,14 +230,15 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   </div>
   <div class="hud-block">
     <div class="hud-val" id="hudLives">❤️❤️❤️</div>
-    <div class="hud-label" id="hudUser">—</div>
   </div>
   <div class="hud-block">
-    <div class="hud-label">Nivel</div>
-    <div class="hud-val" id="hudLevel">1</div>
+    <div class="hud-label">Best</div>
+    <div class="hud-val" id="hudBest">0</div>
   </div>
 </div>
 <div id="xpBar"><div id="xpFill"></div></div>
+<div id="comboHud"><span id="comboMult">x1</span><span id="comboCount"></span></div>
+<div id="recordHint"></div>
 
 <!-- ══ HINT BAR ══ -->
 <div id="hintBar">
@@ -245,10 +246,8 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   <canvas id="hintCanvas" width="34" height="34"></canvas>
 </div>
 
-<!-- ══ FLASH / COMBO ══ -->
+<!-- ══ FLASH ══ -->
 <div id="flashMsg"></div>
-<div id="comboDisplay"></div>
-<div id="levelUpBanner"><h2>NIVEL <span id="lvlNum"></span></h2><p>VELOCIDAD AUMENTADA</p></div>
 
 <!-- ══════════════════════════════════════
      SCREEN: WELCOME / LOGIN
@@ -333,6 +332,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 // ═══════════════════════════════════════════════════════
 const API = '/api'; // Vercel serverless functions
 
+// All balance knobs live here. Tune the game by editing this object only.
 const CONFIG = {
   LANE_COUNT: 3,
   STEP_MS: 1000 / 60,          // fixed simulation step
@@ -340,8 +340,77 @@ const CONFIG = {
   HIT_X_LANE_FRACTION: 0.6,    // horizontal catch window, as a fraction of lane width
   HIT_Y_PX: 36,                // vertical catch window
   GAME_OVER_DELAY_FRAMES: 30,  // short beat between last life lost and game over screen
+  START_LIVES: 3,
+
+  // Score = BASE_SCORE * comboMultiplier * precisionMultiplier
+  BASE_SCORE: 100,
+  COMBO_THRESHOLDS: [          // consecutive catches needed for each multiplier
+    { at: 1,  mult: 1 },
+    { at: 5,  mult: 2 },
+    { at: 10, mult: 3 },
+    { at: 20, mult: 4 },
+  ],
+  // Precision = horizontal distance to the shape centre, as a fraction of lane width.
+  // Being settled in the lane early gives PERFECT; sliding in at the last moment gives GOOD.
+  PERFECT_THRESHOLD: 0.05,
+  GREAT_THRESHOLD: 0.2,
+  PRECISION_MULT: { GOOD: 1.0, GREAT: 1.25, PERFECT: 1.5 },
+
+  // Near miss: a target passed within this many px of the catch window.
+  NEAR_MISS_PX: 45,
+
+  FLOATER_FRAMES: 42,          // floating text lifetime (~700ms)
+  MAX_FLOATERS: 10,
 };
 const LANE_COUNT = CONFIG.LANE_COUNT;
+const COMBO_COLORS = ['#00f5ff', '#00f5ff', '#ffbe0b', '#ff8a00', '#ff006e'];  // by multiplier tier
+
+// ═══════════════════════════════════════════════════════
+//  PROFILE — everything persisted on this device (never sent anywhere)
+// ═══════════════════════════════════════════════════════
+const Profile = (() => {
+  const KEY = 'shaperush.v1';
+  const DEFAULTS = {
+    bestScore: 0, totalGames: 0, totalScore: 0, totalShapes: 0, highestCombo: 0,
+    totalHits: 0, perfectHits: 0,
+    lastId: '', theme: 'geo', muted: false, debug: false, seenIntro: false,
+  };
+  let data = { ...DEFAULTS };
+  try { Object.assign(data, JSON.parse(localStorage.getItem(KEY)) || {}); } catch {}
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {} };
+  return {
+    get: k => data[k],
+    set(k, v) { data[k] = v; persist(); },
+    update(patch) { Object.assign(data, patch); persist(); },
+  };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  COMBO + SCORE (pure rules; state lives in `game`)
+// ═══════════════════════════════════════════════════════
+const ComboManager = {
+  tierIndex(combo) {
+    let idx = 0;
+    CONFIG.COMBO_THRESHOLDS.forEach((t, i) => { if (combo >= t.at) idx = i; });
+    return idx;
+  },
+  multiplierFor(combo) { return CONFIG.COMBO_THRESHOLDS[this.tierIndex(combo)].mult; },
+  // Progress (0..1) towards the next multiplier; 1 when already at the top tier.
+  progress(combo) {
+    const T = CONFIG.COMBO_THRESHOLDS, i = this.tierIndex(combo);
+    if (i >= T.length - 1) return 1;
+    return (combo - T[i].at) / (T[i + 1].at - T[i].at);
+  },
+};
+
+const ScoreManager = {
+  precisionFor(offset) {
+    const name = offset <= CONFIG.PERFECT_THRESHOLD ? 'PERFECT' : offset <= CONFIG.GREAT_THRESHOLD ? 'GREAT' : 'GOOD';
+    return { name, mult: CONFIG.PRECISION_MULT[name] };
+  },
+  gain(comboMult, precision) { return Math.round(CONFIG.BASE_SCORE * comboMult * precision.mult); },
+};
+
 
 const GEO_SHAPES  = ['circle','triangle','square','diamond','pentagon','star','hexagon','cross'];
 const EMOJI_SETS  = ['😀','😎','🤩','😜','🥳','😈','🤖','👽'];
@@ -380,6 +449,8 @@ window.addEventListener('DOMContentLoaded', () => {
   initStars();
   drawMenuBg();
   setupUI();
+  document.getElementById('userInput').value = Profile.get('lastId');
+  selectTheme(Profile.get('theme'));
 });
 
 function resize() {
@@ -437,11 +508,7 @@ function drawMenuBg() {
 function setupUI() {
   // Theme picker
   document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedTheme = btn.dataset.theme;
-    });
+    btn.addEventListener('click', () => selectTheme(btn.dataset.theme));
   });
 
   document.getElementById('btnStart').addEventListener('click', handleStart);
@@ -455,12 +522,21 @@ function setupUI() {
   setupTouchControls();
 }
 
+function selectTheme(theme) {
+  const btn = document.querySelector(`.theme-btn[data-theme="${theme}"]`);
+  if (!btn) return;
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b === btn));
+  selectedTheme = theme;
+  Profile.set('theme', theme);
+}
+
 async function handleStart() {
   const raw = document.getElementById('userInput').value.trim();
   const id = raw.toUpperCase().replace(/[^A-Z0-9_]/g,'');
   const err = document.getElementById('inputError');
   if (id.length < 2) { err.textContent = 'ID debe tener al menos 2 caracteres'; return; }
   err.textContent = '';
+  Profile.set('lastId', id);
 
   try {
     const res = await fetch(`${API}/user`, {
@@ -630,13 +706,13 @@ function startGame() {
 
   game = {
     running: true, over: false, overTimer: 0,
-    score: 0, lives: 3, level: 1,
+    score: 0, lives: CONFIG.START_LIVES, level: 1,
     speed: 3.2, spawnRate: 85, frame: 0,
-    correctCount: 0, combo: 0, bestCombo: 0,
-    xp: 0, xpNeeded: 5,
+    correctCount: 0, fails: 0, perfects: 0, combo: 0, bestCombo: 0,
+    bestAtStart: Math.max(Profile.get('bestScore'), currentUser?.record || 0),
     theme,
     particles: [], fallingShapes: [], explosions: [],
-    bgParticles: [], trails: [],
+    bgParticles: [], trails: [], floaters: [],
     player: {
       lane: 1, targetLane: 1,
       entity, color,
@@ -654,7 +730,6 @@ function startGame() {
 
   updateHUD();
   updateHint();
-  document.getElementById('hudUser').textContent = currentUser?.id || '—';
   lastFrameTime = performance.now();
   accumulator = 0;
   raf = requestAnimationFrame(loop);
@@ -693,6 +768,7 @@ function step() {
   updateExplosions();
   updateBgParticles();
   updateTrails();
+  Fx.update();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -831,70 +907,98 @@ function spawnLandDust() {
   }
 }
 
+function laneWidth() { return canvas.width / LANE_COUNT; }
+
 function updateShapes() {
-  for (let i=game.fallingShapes.length-1;i>=0;i--) {
+  const p = game.player;
+  for (let i = game.fallingShapes.length - 1; i >= 0; i--) {
     const s = game.fallingShapes[i];
     s.y += game.speed;
     s.rotation += s.rotSpeed;
     s.scalePhase += s.wobbleSpeed;
-    s.scale = 1 + Math.sin(s.scalePhase)*0.08;
+    s.scale = 1 + Math.sin(s.scalePhase) * 0.08;
 
-    // Save trail point
     s.trail.push({ x: laneX(s.lane), y: s.y, alpha: 0.3 });
     if (s.trail.length > 6) s.trail.shift();
 
-    const p = game.player;
-    const dist = Math.abs(s.y - p.y);
-    const sameX = Math.abs(laneX(s.lane) - p.currentX) < canvas.width / LANE_COUNT * CONFIG.HIT_X_LANE_FRACTION;
-    const inReach = sameX && dist < CONFIG.HIT_Y_PX;
+    const dx = Math.abs(laneX(s.lane) - p.currentX);
+    const dy = Math.abs(s.y - p.y);
+    const hitDx = laneWidth() * CONFIG.HIT_X_LANE_FRACTION;
+    const inReach = dx < hitDx && dy < CONFIG.HIT_Y_PX;
+
+    // Distance (px) by which this shape has missed the catch window, at its closest.
+    s.closestGap = Math.min(s.closestGap ?? Infinity, Math.hypot(Math.max(0, dx - hitDx), Math.max(0, dy - CONFIG.HIT_Y_PX)));
 
     // Correct shapes can always be caught; invincibility only shields from damage.
     if (inReach && (isTarget(s) || p.invincible === 0) && !game.over) {
-      const px = p.currentX;
       game.fallingShapes.splice(i, 1);
-
-      if (isTarget(s)) {
-        // ✅ CORRECT
-        game.combo++;
-        if (game.combo > game.bestCombo) game.bestCombo = game.combo;
-        game.score += (10 + game.combo * 2) * game.level;
-        p.scaleAnim = 24;
-        spawnParticles(px, p.y, p.color, 20);
-        showCombo(game.combo);
-
-        // XP & level up
-        game.xp++;
-        if (game.xp >= game.xpNeeded) {
-          game.xp = 0;
-          game.xpNeeded = Math.ceil(game.xpNeeded * 1.3);
-          game.level++;
-          game.speed = 3.2 + game.level * 0.5;
-          game.spawnRate = Math.max(32, 85 - game.level * 8);
-          showLevelUp(game.level);
-        }
-
-        // Evolve player
-        const next = nextTarget();
-        p.entity = next.entity;
-        p.color  = next.color;
-        game.correctCount++;
-        updateHUD(); updateHint();
-      } else {
-        // ❌ WRONG
-        game.combo = 0;
-        spawnExplosion(px, p.y, s.color);
-        p.invincible = 90; p.wobble = 24;
-        game.lives--;
-        updateHUD();
-        if (game.lives <= 0) { game.over = true; game.overTimer = CONFIG.GAME_OVER_DELAY_FRAMES; }
-      }
+      if (isTarget(s)) onCatch(s, dx / laneWidth());
+      else onWrongHit(s);
       continue;
     }
-    if (s.y > canvas.height + 60) {
-      if (isTarget(s) && game.combo > 0) game.combo = 0; // missed target resets combo
-      game.fallingShapes.splice(i,1);
+
+    // Shape went below the player row: it can no longer be caught.
+    if (!s.passed && s.y > p.baseY + CONFIG.HIT_Y_PX) {
+      s.passed = true;
+      if (isTarget(s) && !game.over) onMissedTarget(s);
     }
+    if (s.y > canvas.height + 60) game.fallingShapes.splice(i, 1);
   }
+}
+
+/** Player caught the target. `offset` = horizontal error as a fraction of lane width. */
+function onCatch(s, offset) {
+  const p = game.player;
+  const precision = ScoreManager.precisionFor(offset);
+  const prevTier = ComboManager.tierIndex(game.combo);
+
+  game.combo++;
+  game.bestCombo = Math.max(game.bestCombo, game.combo);
+  game.correctCount++;
+  if (precision.name === 'PERFECT') game.perfects++;
+
+  const mult = ComboManager.multiplierFor(game.combo);
+  const gain = ScoreManager.gain(mult, precision);
+  game.score += gain;
+
+  p.scaleAnim = 24;
+  spawnParticles(p.currentX, p.y, p.color, 20);
+  const tierUp = ComboManager.tierIndex(game.combo) > prevTier;
+  const tierColor = COMBO_COLORS[ComboManager.tierIndex(game.combo)];
+  Fx.floatText(p.currentX, p.y - 60, '+' + gain, tierColor, 26);
+  Fx.floatText(p.currentX, p.y - 88, precision.name, precision.name === 'PERFECT' ? '#ffffff' : 'rgba(255,255,255,0.7)', 15);
+  if (tierUp) Fx.floatText(p.currentX, p.y - 122, 'COMBO x' + mult, tierColor, 22, 1.25);
+
+  const next = nextTarget();
+  p.entity = next.entity;
+  p.color  = next.color;
+
+  updateHUD(tierUp ? 'pop' : null);
+  updateHint();
+}
+
+function onWrongHit(s) {
+  const p = game.player;
+  const hadCombo = game.combo > 1;
+  game.combo = 0;
+  game.fails++;
+  spawnExplosion(p.currentX, p.y, s.color);
+  Fx.floatText(p.currentX, p.y - 60, 'OUCH', '#ff006e', 22);
+  p.invincible = 90; p.wobble = 24;
+  game.lives--;
+  updateHUD(hadCombo ? 'lost' : null);
+  if (game.lives <= 0) { game.over = true; game.overTimer = CONFIG.GAME_OVER_DELAY_FRAMES; }
+}
+
+/** A target slipped past. Only "near" if it really came within NEAR_MISS_PX of the catch window. */
+function onMissedTarget(s) {
+  const hadCombo = game.combo > 1;
+  game.combo = 0;
+  game.fails++;
+  const near = s.closestGap <= CONFIG.NEAR_MISS_PX;
+  const x = Math.min(Math.max(laneX(s.lane), 60), canvas.width - 60);
+  Fx.floatText(x, game.player.baseY + 70, near ? 'SO CLOSE' : 'MISSED', near ? '#ffbe0b' : 'rgba(255,255,255,0.55)', near ? 20 : 16);
+  updateHUD(hadCombo ? 'lost' : null);
 }
 
 function updateParticles() {
@@ -947,7 +1051,7 @@ function draw() {
   drawExplosions();
   drawParticles();
   drawPlayer();
-  drawXPBar();
+  Fx.draw();
 
   ctx.restore();
 }
@@ -1108,18 +1212,26 @@ function drawExplosions() {
   }
 }
 
-function drawXPBar() {
-  const pct = game.xp / game.xpNeeded;
-  document.getElementById('xpFill').style.width = (pct*100)+'%';
-}
-
 // ═══════════════════════════════════════════════════════
 //  HUD / OVERLAYS
 // ═══════════════════════════════════════════════════════
-function updateHUD() {
+/** Refreshes HUD text. `comboAnim` = 'pop' (multiplier went up) | 'lost' (combo broken) | null. */
+function updateHUD(comboAnim = null) {
+  const hud = document.getElementById('comboHud');
+  const mult = ComboManager.multiplierFor(game.combo);
   document.getElementById('hudScore').textContent = game.score.toLocaleString();
-  document.getElementById('hudLevel').textContent = game.level;
-  document.getElementById('hudLives').textContent = '❤️'.repeat(game.lives)+'🖤'.repeat(Math.max(0,3-game.lives));
+  document.getElementById('hudBest').textContent = Math.max(game.bestAtStart, game.score).toLocaleString();
+  document.getElementById('hudLives').textContent = '❤️'.repeat(game.lives) + '🖤'.repeat(Math.max(0, CONFIG.START_LIVES - game.lives));
+  const multEl = document.getElementById('comboMult');
+  multEl.textContent = 'x' + mult;
+  multEl.style.color = COMBO_COLORS[ComboManager.tierIndex(game.combo)];
+  document.getElementById('comboCount').textContent = game.combo > 1 ? game.combo + ' STREAK' : '';
+  document.getElementById('xpFill').style.width = (ComboManager.progress(game.combo) * 100) + '%';
+  if (comboAnim) {
+    hud.classList.remove('pop', 'lost');
+    void hud.offsetWidth;  // restart the CSS animation
+    hud.classList.add(comboAnim);
+  }
 }
 
 function updateHint() {
@@ -1137,26 +1249,40 @@ function showFlash(text,color='#00f5ff'){
   flashTimer=setTimeout(()=>el.classList.remove('show'),1200);
 }
 
-let comboTimer=null;
-function showCombo(n){
-  if(n<2) return;
-  const el=document.getElementById('comboDisplay');
-  const msgs=['','','NICE!','GREAT!','SUPER!','AMAZING!','INSANE!','GOD MODE!'];
-  const color=n>=6?'#ff006e':n>=4?'#ffbe0b':'#00f5ff';
-  el.innerHTML=`<div style="color:${color};text-shadow:0 0 30px ${color};font-size:${Math.min(3,1.5+n*0.2)}rem">${msgs[Math.min(n,7)]||'🔥 '+n+'x'}</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.4);letter-spacing:3px">COMBO ${n}x</div>`;
-  el.classList.add('show');
-  if(comboTimer) clearTimeout(comboTimer);
-  comboTimer=setTimeout(()=>el.classList.remove('show'),900);
-}
-
-function showLevelUp(level){
-  document.getElementById('lvlNum').textContent=level;
-  const el=document.getElementById('levelUpBanner');
-  el.style.animation='none'; el.style.opacity='1';
-  setTimeout(()=>{el.style.transition='opacity 0.8s';el.style.opacity='0';},2000);
-  setTimeout(()=>{el.style.transition='';el.style.animation='';},2800);
-  showFlash('NIVEL '+level+' ⚡',COLORS[level%COLORS.length]);
-}
+// ═══════════════════════════════════════════════════════
+//  EFFECTS — floating text (canvas-drawn, short and non-blocking)
+// ═══════════════════════════════════════════════════════
+const Fx = {
+  floatText(x, y, text, color, size, popScale = 1) {
+    if (game.floaters.length >= CONFIG.MAX_FLOATERS) game.floaters.shift();
+    game.floaters.push({ x, y, text, color, size, popScale, age: 0 });
+  },
+  update() {
+    for (let i = game.floaters.length - 1; i >= 0; i--) {
+      if (++game.floaters[i].age >= CONFIG.FLOATER_FRAMES) game.floaters.splice(i, 1);
+    }
+  },
+  draw() {
+    for (const f of game.floaters) {
+      const t = f.age / CONFIG.FLOATER_FRAMES;
+      const pop = t < 0.18 ? 0.6 + 0.4 * easeOutBack(t / 0.18) * f.popScale : 1;   // quick pop-in
+      const x = Math.min(Math.max(f.x, 70), canvas.width - 70);
+      ctx.save();
+      ctx.globalAlpha = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
+      ctx.translate(x, f.y - easeOutCubic(t) * 34);
+      ctx.scale(pop, pop);
+      ctx.font = `900 ${f.size}px Orbitron, monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(4,4,15,0.75)'; ctx.lineJoin = 'round';
+      ctx.strokeText(f.text, 0, 0);
+      ctx.fillStyle = f.color; ctx.shadowBlur = 12; ctx.shadowColor = f.color;
+      ctx.fillText(f.text, 0, 0);
+      ctx.restore();
+    }
+  },
+};
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutBack(t) { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
 
 // ═══════════════════════════════════════════════════════
 //  TOUCH CONTROLS
@@ -1202,9 +1328,23 @@ function setupTouchControls() {
 // ═══════════════════════════════════════════════════════
 //  GAME OVER
 // ═══════════════════════════════════════════════════════
+/** Lifetime stats kept on this device. */
+function recordRunStats() {
+  Profile.update({
+    bestScore: Math.max(Profile.get('bestScore'), game.score),
+    totalGames: Profile.get('totalGames') + 1,
+    totalScore: Profile.get('totalScore') + game.score,
+    totalShapes: Profile.get('totalShapes') + game.correctCount,
+    highestCombo: Math.max(Profile.get('highestCombo'), game.bestCombo),
+    totalHits: Profile.get('totalHits') + game.correctCount,
+    perfectHits: Profile.get('perfectHits') + game.perfects,
+  });
+}
+
 async function endGame() {
   game.running=false;
   if(raf){cancelAnimationFrame(raf);raf=null;}
+  recordRunStats();
 
   // Save score
   const previousRecord = currentUser?.record || 0;
@@ -1228,7 +1368,7 @@ async function endGame() {
   document.getElementById('goRecord').textContent=record.toLocaleString();
   document.getElementById('goCorrect').textContent=game.correctCount;
   document.getElementById('goBestCombo').textContent=game.bestCombo+'x';
-  document.getElementById('goLevel').textContent=game.level;
+  document.getElementById('goLevel').textContent='—';
 
   show('screenGameOver');
   showTab('stats');
