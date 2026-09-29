@@ -34,8 +34,8 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 .hud-val{font-family:'Orbitron',monospace;font-weight:900;font-size:1.2rem;color:#fff;}
 #hudScore{text-shadow:0 0 14px var(--cyan);}
 #hudLives{font-size:1rem;letter-spacing:2px;}
-#hudLevel{text-shadow:0 0 14px var(--yellow);color:var(--yellow);}
-#hudUser{font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:1px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#hudBest{color:var(--yellow);text-shadow:0 0 14px rgba(255,190,11,0.5);}
+.hud-block{min-width:80px;}
 
 /* ── SHAPE HINT BAR ── */
 #hintBar{
@@ -48,14 +48,6 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 #hintBar span{font-size:0.62rem;letter-spacing:3px;color:rgba(255,255,255,0.35);text-transform:uppercase;}
 #hintCanvas{border-radius:50%;}
 
-/* ── LANE TOUCH ZONES ── */
-#touchLeft,#touchRight{
-  position:fixed;top:0;bottom:0;z-index:25;width:40%;
-  opacity:0;
-}
-#touchLeft{left:0;}
-#touchRight{right:0;}
-
 /* ── SCREENS ── */
 .screen{
   position:fixed;inset:0;z-index:50;
@@ -63,13 +55,13 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   background:rgba(4,4,15,0.96);backdrop-filter:blur(12px);
   padding:24px;
 }
-.screen.hidden{display:none;}
+.hidden{display:none !important;}
 
 /* LOGO */
 .logo{
   font-family:'Orbitron',monospace;font-weight:900;
   font-size:clamp(2.2rem,9vw,4rem);
-  letter-spacing:6px;color:#fff;
+  letter-spacing:6px;color:#fff;text-align:center;padding-left:6px;
   text-shadow:0 0 30px var(--cyan),0 0 60px var(--cyan);
   animation:logoPulse 2s ease-in-out infinite;
   margin-bottom:4px;
@@ -125,6 +117,19 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   flex-direction:column;gap:2px;
 }
 .theme-btn span{font-size:0.45rem;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;}
+.theme-btn.locked{opacity:0.4;}
+.mode-toggle{
+  width:100%;max-width:340px;margin-bottom:14px;padding:11px;border-radius:14px;cursor:pointer;
+  font-family:'Orbitron',monospace;font-weight:700;font-size:0.68rem;letter-spacing:2px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.55);
+  transition:all 0.2s;
+}
+.mode-toggle.on{border-color:var(--pink);color:var(--pink);background:rgba(255,0,110,0.1);box-shadow:0 0 18px rgba(255,0,110,0.25);}
+.mode-toggle small{display:block;font-family:'Exo 2',sans-serif;font-weight:400;font-size:0.6rem;letter-spacing:1px;margin-top:3px;opacity:0.7;}
+.howto{font-size:0.72rem;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:18px;line-height:1.7;}
+.howto b{color:var(--cyan);font-weight:600;}
+.howto-keys{font-size:0.62rem;letter-spacing:1px;color:rgba(255,255,255,0.35);}
+#themeHint{font-size:0.6rem;letter-spacing:1px;color:rgba(255,255,255,0.4);text-align:center;margin-top:10px;min-height:1em;}
 .theme-btn.active{border-color:var(--cyan);background:rgba(0,245,255,0.12);box-shadow:0 0 16px rgba(0,245,255,0.3);}
 
 /* STATS */
@@ -139,7 +144,10 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   font-size:clamp(2.5rem,10vw,4.5rem);color:#fff;
   text-shadow:0 0 30px var(--yellow);line-height:1;margin:12px 0;
 }
-.score-rank{font-size:0.7rem;letter-spacing:3px;color:var(--yellow);text-transform:uppercase;}
+.score-rank{font-size:0.7rem;letter-spacing:3px;color:var(--yellow);text-transform:uppercase;min-height:1em;text-align:center;}
+.go-label{font-size:0.6rem;letter-spacing:4px;color:rgba(255,255,255,0.35);margin-top:10px;}
+#goUnlock{font-family:'Orbitron',monospace;font-size:0.7rem;letter-spacing:2px;color:var(--green);text-shadow:0 0 10px rgba(6,214,160,0.5);text-align:center;margin-bottom:12px;min-height:1em;}
+#debugPanel{position:fixed;left:8px;bottom:56px;z-index:45;font:10px/1.35 monospace;color:#9ff;background:rgba(0,0,0,0.55);padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;display:none;}
 
 /* LEADERBOARD */
 .lb-row{
@@ -154,18 +162,9 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 .lb-score{font-family:'Orbitron',monospace;font-size:0.82rem;color:var(--cyan);}
 .lb-me{background:rgba(0,245,255,0.07);border-radius:8px;padding:0 6px;margin:0 -6px;}
 
-/* INSTRUCTIONS MINI */
-.instruct{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px;}
-.instruct-item{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;min-width:64px;
-}
-.instruct-icon{font-size:1.2rem;}
-.instruct-text{font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:1px;text-align:center;}
-
 /* FLASH MESSAGE */
 #flashMsg{
-  position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  position:fixed;top:122px;left:50%;transform:translateX(-50%);
   z-index:60;font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;
   letter-spacing:3px;padding:10px 24px;border-radius:40px;
   background:rgba(0,245,255,0.15);border:1px solid rgba(0,245,255,0.4);
@@ -173,16 +172,6 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;
 }
 #flashMsg.show{opacity:1;}
-
-/* COMBO DISPLAY */
-#comboDisplay{
-  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  z-index:40;font-family:'Orbitron',monospace;font-weight:900;
-  font-size:clamp(2rem,8vw,3.5rem);color:#fff;pointer-events:none;
-  text-align:center;line-height:1.1;
-  opacity:0;transition:opacity 0.15s;
-}
-#comboDisplay.show{opacity:1;}
 
 /* SCROLLABLE */
 .scroll-area{width:100%;max-height:220px;overflow-y:auto;scrollbar-width:none;}
@@ -197,30 +186,69 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 }
 .tab.active{background:rgba(0,245,255,0.12);color:var(--cyan);border:1px solid rgba(0,245,255,0.3);}
 
-/* LEVEL UP BANNER */
-#levelUpBanner{
-  position:fixed;top:50%;left:0;right:0;transform:translateY(-50%);
-  z-index:55;text-align:center;pointer-events:none;
-  opacity:0;
-}
-#levelUpBanner h2{
-  font-family:'Orbitron',monospace;font-size:clamp(1.5rem,6vw,2.5rem);
-  color:var(--yellow);text-shadow:0 0 30px var(--yellow);letter-spacing:4px;
-}
-#levelUpBanner p{font-size:0.7rem;letter-spacing:3px;color:rgba(255,255,255,0.5);margin-top:4px;}
-
 /* PROGRESS BAR */
 #xpBar{
   position:fixed;top:56px;left:0;right:0;height:3px;z-index:29;
   background:rgba(255,255,255,0.06);
 }
-#xpFill{height:100%;background:linear-gradient(to right,var(--cyan),var(--purple));transition:width 0.4s ease;width:0%;}
+#xpFill{height:100%;background:linear-gradient(to right,var(--cyan),var(--purple));transition:width 0.2s ease-out;width:0%;}
+
+#hudScore.bump{animation:scoreBump 0.18s ease-out;}
+@keyframes scoreBump{0%{transform:scale(1.25);}100%{transform:scale(1);}}
+
+#btnMute{
+  position:fixed;top:12px;right:12px;z-index:70;width:40px;height:40px;border-radius:50%;
+  border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);
+  color:#fff;font-size:1.1rem;cursor:pointer;
+}
+#btnMute.hidden{display:none;}
+
+/* BOSS */
+#bossBar{position:fixed;top:98px;left:50%;transform:translateX(-50%);z-index:30;width:min(88%,380px);pointer-events:none;display:none;}
+body.boss #bossBar{display:block;}
+body.boss #recordHint{display:none;}
+.boss-name{font-family:'Orbitron',monospace;font-weight:900;font-size:0.58rem;letter-spacing:4px;color:var(--pink);text-shadow:0 0 10px rgba(255,0,110,0.6);margin-bottom:4px;text-align:center;}
+.boss-track{height:9px;border-radius:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);overflow:hidden;}
+#bossFill{height:100%;width:100%;background:linear-gradient(to right,#ff006e,#ff8a00);transition:width 0.12s linear;}
+
+/* DIRECTION CHANGE */
+#dirAlert{position:fixed;top:172px;left:50%;transform:translateX(-50%);z-index:36;width:92%;max-width:380px;text-align:center;pointer-events:none;display:none;}
+#dirAlert.show{display:block;animation:alertPulse 0.45s ease-in-out infinite alternate;}
+.dir-title{font-family:'Orbitron',monospace;font-weight:900;font-size:1rem;letter-spacing:3px;color:var(--pink);text-shadow:0 0 16px var(--pink);}
+.dir-sub{font-size:0.66rem;letter-spacing:2px;color:rgba(255,255,255,0.78);margin-top:6px;line-height:1.7;}
+@keyframes alertPulse{from{opacity:0.65;}to{opacity:1;}}
+#turnFlash{position:fixed;inset:0;z-index:34;background:#fff;opacity:0;pointer-events:none;}
+#turnFlash.go{animation:turnFlash 0.28s ease-out;}
+@keyframes turnFlash{0%{opacity:0.5;}100%{opacity:0;}}
+
+/* COMBO HUD */
+#comboHud{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:30;
+  display:flex;align-items:baseline;gap:8px;pointer-events:none;
+  font-family:'Orbitron',monospace;font-weight:900;
+}
+#comboMult{font-size:1.5rem;color:var(--cyan);text-shadow:0 0 14px var(--cyan);transition:color 0.2s;}
+#comboCount{font-size:0.62rem;letter-spacing:2px;color:rgba(255,255,255,0.45);}
+#comboHud.pop #comboMult{animation:comboPop 0.35s cubic-bezier(.2,1.6,.4,1);}
+@keyframes comboPop{0%{transform:scale(1.9);}100%{transform:scale(1);}}
+#comboHud.lost #comboMult{animation:comboLost 0.3s ease-out;}
+@keyframes comboLost{0%{transform:translateX(-6px);color:var(--pink);}50%{transform:translateX(6px);}100%{transform:translateX(0);}}
+
+/* RECORD HINT */
+#recordHint{
+  position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:30;
+  font-family:'Orbitron',monospace;font-size:0.6rem;letter-spacing:2px;font-weight:700;
+  color:var(--yellow);text-shadow:0 0 10px rgba(255,190,11,0.6);
+  white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.25s;
+}
+#recordHint.show{opacity:1;}
 </style>
 </head>
 <body>
 
 <!-- ══ CANVAS ══ -->
 <canvas id="gameCanvas"></canvas>
+<button id="btnMute" aria-label="Sound on/off"></button>
 
 <!-- ══ HUD ══ -->
 <div id="hud">
@@ -230,14 +258,17 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   </div>
   <div class="hud-block">
     <div class="hud-val" id="hudLives">❤️❤️❤️</div>
-    <div class="hud-label" id="hudUser">—</div>
   </div>
   <div class="hud-block">
-    <div class="hud-label">Nivel</div>
-    <div class="hud-val" id="hudLevel">1</div>
+    <div class="hud-label">Best</div>
+    <div class="hud-val" id="hudBest">0</div>
   </div>
 </div>
 <div id="xpBar"><div id="xpFill"></div></div>
+<div id="comboHud"><span id="comboMult">x1</span><span id="comboCount"></span></div>
+<div id="recordHint"></div>
+<div id="bossBar"><div class="boss-name" id="bossName"></div><div class="boss-track"><div id="bossFill"></div></div></div>
+<div id="debugPanel"></div>
 
 <!-- ══ HINT BAR ══ -->
 <div id="hintBar">
@@ -245,10 +276,10 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
   <canvas id="hintCanvas" width="34" height="34"></canvas>
 </div>
 
-<!-- ══ FLASH / COMBO ══ -->
+<!-- ══ FLASH ══ -->
 <div id="flashMsg"></div>
-<div id="comboDisplay"></div>
-<div id="levelUpBanner"><h2>NIVEL <span id="lvlNum"></span></h2><p>VELOCIDAD AUMENTADA</p></div>
+<div id="dirAlert"><div class="dir-title" id="dirTitle">⚠ DIRECTION CHANGE</div><div class="dir-sub" id="dirSub"></div></div>
+<div id="turnFlash"></div>
 
 <!-- ══════════════════════════════════════
      SCREEN: WELCOME / LOGIN
@@ -267,15 +298,20 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 
   <div class="card">
     <div class="card-title">Elige tu personaje</div>
-    <div class="themes" id="themePicker">
-      <button class="theme-btn active" data-theme="geo">⬡<span>Geo</span></button>
-      <button class="theme-btn" data-theme="emoji">😎<span>Emoji</span></button>
-      <button class="theme-btn" data-theme="pixel">👾<span>Pixel</span></button>
-      <button class="theme-btn" data-theme="neon">✦<span>Neon</span></button>
-    </div>
+    <div class="themes" id="themePicker"></div>
+    <div class="card-title" style="margin:16px 0 8px;">Aura (skin del boss)</div>
+    <div class="themes" id="skinPicker"></div>
+    <div id="themeHint"></div>
+  </div>
+
+  <button class="mode-toggle" id="btnOneLife" aria-pressed="false"></button>
+  <div class="howto">
+    <div><b>Atrapa</b> la forma del indicador ↓ · <b>esquiva</b> las demás</div>
+    <div class="howto-keys">◀ ▶ mover &nbsp;·&nbsp; ▲ saltar &nbsp;·&nbsp; M sonido</div>
   </div>
 
   <button class="btn btn-primary" id="btnStart">JUGAR</button>
+  <button class="btn btn-ghost" id="btnBossPractice">⚔ Pelear contra el Boss (práctica)</button>
   <button class="btn btn-ghost" id="btnLeaderboard">🏆 Clasificación Global</button>
 </div>
 
@@ -300,20 +336,22 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 ══════════════════════════════════════ -->
 <div class="screen hidden" id="screenGameOver">
   <div class="logo" style="font-size:2rem;margin-bottom:4px;" id="goTitle">GAME OVER</div>
-  <div class="score-rank" id="goRank"></div>
+  <div class="score-rank" id="goRecordMsg"></div>
+  <div class="go-label" id="goLabel">SCORE</div>
   <div class="score-big" id="goScore">0</div>
 
   <div class="card" style="max-width:340px;width:100%;">
     <div class="tabs">
-      <button class="tab active" id="tabStats" onclick="showTab('stats')">Mi Partida</button>
+      <button class="tab active" id="tabStats" onclick="showTab('stats')">Run</button>
       <button class="tab" id="tabLb" onclick="showTab('lb')">Top Global</button>
     </div>
 
     <div id="panelStats">
-      <div class="stat-row"><span class="stat-label">Récord Personal</span><span class="stat-val" id="goRecord">—</span></div>
-      <div class="stat-row"><span class="stat-label">Formas atrapadas</span><span class="stat-val" id="goCorrect">0</span></div>
-      <div class="stat-row"><span class="stat-label">Mejor Combo</span><span class="stat-val" id="goBestCombo">0x</span></div>
-      <div class="stat-row"><span class="stat-label">Nivel alcanzado</span><span class="stat-val" id="goLevel">1</span></div>
+      <div class="stat-row"><span class="stat-label">BEST</span><span class="stat-val" id="goRecord">—</span></div>
+      <div class="stat-row"><span class="stat-label">MAX COMBO</span><span class="stat-val" id="goBestCombo">x0</span></div>
+      <div class="stat-row"><span class="stat-label">SHAPES</span><span class="stat-val" id="goCorrect">0</span></div>
+      <div class="stat-row" id="goBossRow"><span class="stat-label">BOSS</span><span class="stat-val" id="goBoss">—</span></div>
+      <div class="stat-row"><span class="stat-label">ACCURACY</span><span class="stat-val" id="goAccuracy">—</span></div>
     </div>
 
     <div id="panelLb" class="hidden">
@@ -323,7 +361,9 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
     </div>
   </div>
 
-  <button class="btn btn-primary" id="btnReplay">JUGAR DE NUEVO</button>
+  <div id="goUnlock"></div>
+  <button class="btn btn-primary" id="btnReplay">RETRY</button>
+  <button class="btn btn-ghost" id="btnBossRetry" style="margin-top:0;margin-bottom:8px;">⚔ RETRY BOSS (PRACTICE)</button>
   <button class="btn btn-ghost" id="btnHome">🏠 Inicio</button>
 </div>
 
@@ -332,7 +372,414 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 //  CONFIG & CONSTANTS
 // ═══════════════════════════════════════════════════════
 const API = '/api'; // Vercel serverless functions
-const LANE_COUNT = 3;
+
+// All balance knobs live here. Tune the game by editing this object only.
+const CONFIG = {
+  LANE_COUNT: 3,
+  STEP_MS: 1000 / 60,          // fixed simulation step
+  MAX_FRAME_MS: 100,           // longest frame we simulate (acts as auto-pause when tab is hidden)
+  HIT_X_LANE_FRACTION: 0.6,    // horizontal catch window, as a fraction of lane width
+  HIT_Y_PX: 36,                // vertical catch window
+  GAME_OVER_DELAY_FRAMES: 30,  // short beat between last life lost and game over screen
+  START_LIVES: 3,
+  // Final boss: free movement, auto-fire, dodge alien fire, catch the glowing shape for a power shot.
+  BOSS: {
+    ENABLED: true,
+    AT_SHAPES: 35,             // catches in a run before the boss shows up
+    NAME: 'VOID MAW',
+    WARN_FRAMES: 150,          // "boss incoming" warning; no new shapes spawn
+    INTRO_FRAMES: 110,         // boss slides in, harmless
+    DEATH_FRAMES: 110,
+    HP: 420,
+    WIDTH_MAX: 230,
+    SWAY_SPEED: 0.021,         // radians/step of the side-to-side movement (grows with phase)
+    HIT_SCORE: 5,              // points per shot that lands
+    KILL_SCORE: 5000,
+    KILL_SCORE_PER_LIFE: 1500, // bonus for every life left
+    SHOT: { EVERY: 8, SPEED: 13, DAMAGE: 1, RADIUS: 5 },       // automatic fire
+    POWER: { DAMAGE: 18, SPEED: 15, RADIUS: 17 },              // fired after catching the glowing shape
+    GIFT: { EVERY: 190, SPEED: 2.4, CATCH_RADIUS: 36 },
+    HEART: { EVERY: 600, AFTER_HIT: 240, SPEED: 2.0, CATCH_RADIUS: 32 },   // +1 life; only dropped while you are missing one
+    PLAYER: { HURT_RADIUS: 9, KEY_SPEED: 6.5, MAX_STEP: 24, MARGIN: 26, BOTTOM_MARGIN: 90 },
+    BULLET: { SIZE: 13, HURT_FACTOR: 0.72, MAX: 150 },
+    PHASE_AT: [0.66, 0.33],    // hp fractions where the boss changes pattern
+    ATTACKS: {
+      P1: { aimedEvery: 60, count: 3, spread: 0.22, speed: 4.0 },
+      P2: { fanEvery: 50, fanCount: 5, fanSpread: 1.2, fanSpeed: 3.6, aimedEvery: 110, aimedCount: 2, aimedSpread: 0.16, aimedSpeed: 5.0 },
+      P3: { streamEvery: 8, streamSwing: 1.15, streamSpeed: 3.7, aimedEvery: 68, aimedCount: 3, aimedSpread: 0.2, aimedSpeed: 5.6 },
+    },
+  },
+  MAX_LANE_SPAN_PX: 520,       // lanes never spread wider than this (keeps wide screens playable)
+  REFERENCE_TRAVEL_PX: 800,    // fall speed is scaled by travel length so crossing time is equal in every direction
+  DIRECTION: {
+    ENABLED: true,
+    FIRST_AT_SHAPES: 12,       // first direction change after this many catches
+    GAP_SHAPES: [10, 16],      // then every N..M catches
+    ALERT_FRAMES: 120,         // warning time (~2s); new shapes stop spawning meanwhile
+    POST_SWITCH_SPAWN_DELAY: 40,
+    VARY_START: true,          // each new run starts from a different direction than the previous run
+    START_BANNER_FRAMES: 130,  // controls reminder when a run starts from a non-default direction
+    START_SPAWN_DELAY: 95,     // first shape waits a little so the player can orient
+  },
+
+  // Score = BASE_SCORE * comboMultiplier * precisionMultiplier
+  BASE_SCORE: 100,
+  COMBO_THRESHOLDS: [          // consecutive catches needed for each multiplier
+    { at: 1,  mult: 1 },
+    { at: 5,  mult: 2 },
+    { at: 10, mult: 3 },
+    { at: 20, mult: 4 },
+  ],
+  // Precision = horizontal distance to the shape centre, as a fraction of lane width.
+  // Being settled in the lane early gives PERFECT; sliding in at the last moment gives GOOD.
+  PERFECT_THRESHOLD: 0.05,
+  GREAT_THRESHOLD: 0.2,
+  PRECISION_MULT: { GOOD: 1.0, GREAT: 1.25, PERFECT: 1.5 },
+
+  // Near miss: a target passed within this many px of the catch window.
+  NEAR_MISS_PX: 45,
+
+  // Difficulty d runs 0..1. Everything below is interpolated between its EASY and HARD value.
+  MIN_SPEED: 4.0,              // fall speed (px/step) at d=0
+  MAX_SPEED: 8.5,              // ... and at d=1
+  DIFFICULTY_CURVE: 1.3,       // >1 = gentler start, steeper end
+  DIFFICULTY_RATE: {
+    PER_HIT: 0.02,             // d gained per catch
+    PER_SECOND: 0.0015,        // slow drift with time survived
+    FLOW_STREAK: 6,            // streak that counts as "mastering" the current pace
+    FLOW_BONUS: 1.5,           // hit gain multiplier while on such a streak
+  },
+  FLOW: {                      // when struggling, d simply stops growing (it never drops)
+    ERROR_WINDOW_FRAMES: 480,  // ~8s
+    ERRORS_TO_HOLD: 2,
+  },
+  PHASES: [                    // `until` = upper bound of d for the phase
+    { name: 'EASY START',     until: 0.2 },
+    { name: 'MEDIUM FLOW',    until: 0.55 },
+    { name: 'HIGH INTENSITY', until: 1.01 },
+  ],
+  SPAWN_INTERVAL: { EASY: 70, HARD: 36 },   // steps between waves
+  SPAWN_JITTER: 0.15,
+  FIRST_SPAWN_FRAME: 20,       // the first shape is always the target, so the goal is obvious
+  TARGET_CHANCE: { EASY: 0.6, HARD: 0.32 },
+  LOOKALIKE_CHANCE: { EASY: 0, HARD: 0.75 },  // decoys sharing colour or shape with the target
+  DOUBLE_SPAWN: { START_AT: 0.35, MAX_CHANCE: 0.4 },
+  RING_FADE: { FROM: 0.25, TO: 0.6, MIN_FACTOR: 0.4 },  // "this is the target" ring fades as you master the game
+
+  // Game feel
+  PARTICLE_AMOUNT: { CATCH: 14, PERFECT_EXTRA: 8, WRONG: 22, MAX_ALIVE: 260 },
+  SCREEN_SHAKE_AMOUNT: { CATCH: 3, PERFECT: 5, TIER_UP: 8, WRONG: 14, DECAY: 0.8 },  // px amplitude
+  SCORE_TWEEN: 0.25,           // fraction of the gap the displayed score closes each step
+  MILESTONES: [10, 25, 50, 100],  // shapes caught in one run
+  AUDIO_VOLUME: 0.16,
+  AUDIO_DEDUPE_MS: 90,         // a sound of equal/lower priority inside this window is skipped
+
+  // Records
+  NEAR_RECORD: { ABS: 300, FRACTION: 0.15 },   // show "N TO NEW RECORD" inside max(ABS, best*FRACTION)
+  NEAR_LOSS_FRACTION: 0.35,    // game over: "X POINTS FROM YOUR BEST" if the gap is under this share of best
+  GAME_OVER_INPUT_LOCK_MS: 350,  // ignore Retry taps that were meant for the game
+  API_TIMEOUT_MS: 2500,
+  DEBUG_UPDATE_STEPS: 15,
+  INTRO_HINT_GAMES: 3,         // show the "what to catch" hint during a player's first runs
+
+  FLOATER_FRAMES: 42,          // floating text lifetime (~700ms)
+  MAX_FLOATERS: 10,
+};
+const LANE_COUNT = CONFIG.LANE_COUNT;
+// Cosmetic themes. `unlockAt` = lifetime points on this device.
+const THEMES = {
+  geo:   { label: 'Geo',   icon: '⬡',  unlockAt: 0 },
+  emoji: { label: 'Emoji', icon: '😎', unlockAt: 1500 },
+  pixel: { label: 'Pixel', icon: '👾', unlockAt: 3500 },
+  neon:  { label: 'Neon',  icon: '✦',  unlockAt: 5000 },
+};
+// Cosmetic auras earned by beating the boss. Purely visual.
+const SKINS = {
+  classic: { label: 'Classic', icon: '◯',  aura: null,      trail: null,      req: '' },
+  gold:    { label: 'Gold',    icon: '👑', aura: '#ffd700', trail: '#ffd700', req: 'Defeat the boss' },
+  void:    { label: 'Void',    icon: '🌌', aura: '#a855f7', trail: '#c4b5fd', req: 'Defeat the boss without being hit' },
+  skull:   { label: 'Skull',   icon: '💀', aura: '#ff3b30', trail: '#ff8a00', req: 'Defeat the boss in 1-life mode' },
+};
+const isSkinUnlocked = id => Profile.get('skins').includes(id);
+const activeSkin = () => SKINS[isSkinUnlocked(Profile.get('skin')) ? Profile.get('skin') : 'classic'];
+
+function renderSkinPicker() {
+  const current = Profile.get('skin');
+  document.getElementById('skinPicker').innerHTML = Object.entries(SKINS).map(([id, k]) => {
+    const locked = !isSkinUnlocked(id);
+    return `<button class="theme-btn ${id === current ? 'active' : ''} ${locked ? 'locked' : ''}" data-skin="${id}">${locked ? '🔒' : k.icon}<span>${k.label}</span></button>`;
+  }).join('');
+}
+function selectSkin(id) {
+  if (!SKINS[id]) return;
+  if (!isSkinUnlocked(id)) {
+    document.getElementById('themeHint').textContent = `${SKINS[id].req.toUpperCase()} TO UNLOCK ${SKINS[id].label.toUpperCase()}`;
+    return;
+  }
+  Profile.set('skin', id);
+  renderSkinPicker();
+}
+
+const isThemeUnlocked = id => Profile.get('totalScore') >= THEMES[id].unlockAt;
+function unlockedThemeIds() { return Object.keys(THEMES).filter(isThemeUnlocked); }
+
+function renderThemePicker() {
+  const total = Profile.get('totalScore');
+  document.getElementById('themePicker').innerHTML = Object.entries(THEMES).map(([id, t]) => {
+    const locked = !isThemeUnlocked(id);
+    return `<button class="theme-btn ${id === selectedTheme ? 'active' : ''} ${locked ? 'locked' : ''}" data-theme="${id}">${locked ? '🔒' : t.icon}<span>${t.label}</span></button>`;
+  }).join('');
+  const next = Object.values(THEMES).filter(t => total < t.unlockAt).sort((a, b) => a.unlockAt - b.unlockAt)[0];
+  document.getElementById('themeHint').textContent = next
+    ? `TOTAL ${total.toLocaleString()} · ${next.label.toUpperCase()} UNLOCKS AT ${next.unlockAt.toLocaleString()}`
+    : 'ALL THEMES UNLOCKED';
+}
+
+const COMBO_COLORS = ['#00f5ff', '#00f5ff', '#ffbe0b', '#ff8a00', '#ff006e'];  // by multiplier tier
+
+// ═══════════════════════════════════════════════════════
+//  PROFILE — everything persisted on this device (never sent anywhere)
+// ═══════════════════════════════════════════════════════
+const Profile = (() => {
+  const KEY = 'shaperush.v1';
+  const DEFAULTS = {
+    bestScore: 0, bestScoreOneLife: 0, oneLife: false, totalGames: 0, totalScore: 0, totalShapes: 0, highestCombo: 0,
+    totalHits: 0, perfectHits: 0,
+    bossKills: 0, bossKillsOneLife: 0, bossFlawless: 0, skins: ['classic'], skin: 'classic',
+    lastId: '', lastStartDir: 'down', theme: 'geo', muted: false, debug: false,
+  };
+  let data = { ...DEFAULTS };
+  try { Object.assign(data, JSON.parse(localStorage.getItem(KEY)) || {}); } catch {}
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {} };
+  return {
+    get: k => data[k],
+    set(k, v) { data[k] = v; persist(); },
+    update(patch) { Object.assign(data, patch); persist(); },
+  };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  COMBO + SCORE (pure rules; state lives in `game`)
+// ═══════════════════════════════════════════════════════
+const ComboManager = {
+  tierIndex(combo) {
+    let idx = 0;
+    CONFIG.COMBO_THRESHOLDS.forEach((t, i) => { if (combo >= t.at) idx = i; });
+    return idx;
+  },
+  multiplierFor(combo) { return CONFIG.COMBO_THRESHOLDS[this.tierIndex(combo)].mult; },
+  // Progress (0..1) towards the next multiplier; 1 when already at the top tier.
+  progress(combo) {
+    const T = CONFIG.COMBO_THRESHOLDS, i = this.tierIndex(combo);
+    if (i >= T.length - 1) return 1;
+    return (combo - T[i].at) / (T[i + 1].at - T[i].at);
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+//  WORLD — game logic always runs "shapes fall down, lanes run left→right".
+//  Other directions are the same world rotated when drawn, so collisions,
+//  spawning and difficulty never need to know about direction.
+// ═══════════════════════════════════════════════════════
+const DIRECTIONS = {
+  // dir = where shapes travel on screen. `keys` map a screen direction to a lane step;
+  // `jump` is the screen direction that hops towards where shapes come from.
+  down:  { angle: 0,            vec: [0, 1],  swap: false, from: 'TOP',    keys: { left: -1, right: 1 }, jump: 'up',    hint: '← → MOVE · ↑ JUMP' },
+  up:    { angle: Math.PI,      vec: [0, -1], swap: false, from: 'BOTTOM', keys: { left: 1, right: -1 }, jump: 'down',  hint: '← → MOVE · ↓ JUMP' },
+  left:  { angle: Math.PI / 2,  vec: [-1, 0], swap: true,  from: 'RIGHT',  keys: { up: -1, down: 1 },    jump: 'right', hint: '↑ ↓ MOVE · → JUMP' },
+  right: { angle: -Math.PI / 2, vec: [1, 0],  swap: true,  from: 'LEFT',   keys: { up: 1, down: -1 },    jump: 'left',  hint: '↑ ↓ MOVE · ← JUMP' },
+};
+let world = null;
+
+function geometry(dir) {
+  const D = DIRECTIONS[dir], W = canvas.width, H = canvas.height;
+  const w = D.swap ? H : W, h = D.swap ? W : H;      // logical lateral / travel extents
+  const span = Math.min(w, CONFIG.MAX_LANE_SPAN_PX);
+  return { dir, ...D, W, H, w, h, span, offset: (w - span) / 2, laneW: span / LANE_COUNT, scale: h / CONFIG.REFERENCE_TRAVEL_PX };
+}
+/** Logical world point → screen pixel. */
+function toScreen(x, y, g = world) {
+  switch (g.dir) {
+    case 'up':    return [g.W - x, g.H - y];
+    case 'left':  return [g.W - y, x];
+    case 'right': return [y, g.H - x];
+    default:      return [x, y];
+  }
+}
+function applyWorldTransform(g = world) {
+  switch (g.dir) {
+    case 'up':    ctx.translate(g.W, g.H); ctx.rotate(Math.PI); break;
+    case 'left':  ctx.translate(g.W, 0);   ctx.rotate(Math.PI / 2); break;
+    case 'right': ctx.translate(0, g.H);   ctx.rotate(-Math.PI / 2); break;
+  }
+}
+const playerBaseY = (g = world) => g.h * 0.78;
+function setWorld(dir) {
+  world = geometry(dir);
+  if (game.player) {
+    game.player.baseY = playerBaseY();
+    if (!game.player.jumping) game.player.y = game.player.baseY;
+  }
+}
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+const DifficultyManager = {
+  phaseIndex(d) { return CONFIG.PHASES.findIndex(p => d < p.until); },
+
+  /** Gameplay parameters for a difficulty level. Pure function of d. */
+  paramsFor(d) {
+    const e = Math.pow(d, CONFIG.DIFFICULTY_CURVE);
+    const C = CONFIG;
+    return {
+      speed: lerp(C.MIN_SPEED, C.MAX_SPEED, e),
+      spawnRate: Math.round(lerp(C.SPAWN_INTERVAL.EASY, C.SPAWN_INTERVAL.HARD, e)),
+      targetChance: lerp(C.TARGET_CHANCE.EASY, C.TARGET_CHANCE.HARD, e),
+      lookalikeChance: lerp(C.LOOKALIKE_CHANCE.EASY, C.LOOKALIKE_CHANCE.HARD, e),
+      doubleChance: C.DOUBLE_SPAWN.MAX_CHANCE * smoothstep(C.DOUBLE_SPAWN.START_AT, 1, d),
+      ringFactor: lerp(1, C.RING_FADE.MIN_FACTOR, smoothstep(C.RING_FADE.FROM, C.RING_FADE.TO, d)),
+    };
+  },
+
+  /** Two or more recent errors: stop raising difficulty for a while. */
+  isStruggling() {
+    const F = CONFIG.FLOW;
+    game.recentErrors = game.recentErrors.filter(f => game.frame - f < F.ERROR_WINDOW_FRAMES);
+    return game.recentErrors.length >= F.ERRORS_TO_HOLD;
+  },
+
+  reset() {
+    game.difficulty = 0;
+    game.phase = 0;
+    game.recentErrors = [];
+    game.params = this.paramsFor(0);
+    this.syncGame();
+  },
+
+  onHit() {
+    const R = CONFIG.DIFFICULTY_RATE;
+    if (this.isStruggling()) return;
+    const bonus = game.combo >= R.FLOW_STREAK ? R.FLOW_BONUS : 1;
+    this.raise(R.PER_HIT * bonus);
+  },
+  onError() { game.recentErrors.push(game.frame); },
+
+  /** Called every simulation step. */
+  tick() {
+    if (!this.isStruggling()) this.raise(CONFIG.DIFFICULTY_RATE.PER_SECOND / 60);
+  },
+
+  raise(amount) {
+    game.difficulty = Math.min(1, game.difficulty + amount);
+    game.params = this.paramsFor(game.difficulty);
+    this.syncGame();
+    const phase = this.phaseIndex(game.difficulty);
+    if (phase !== game.phase) {
+      game.phase = phase;
+      showFlash(CONFIG.PHASES[phase].name, phase === 1 ? '#ffbe0b' : '#ff006e');
+    }
+  },
+
+  syncGame() { game.speed = game.params.speed; game.spawnRate = game.params.spawnRate; },
+};
+
+const DirectionManager = {
+  /** First run ever: classic top-down. After that: never the same start direction twice in a row. */
+  pickStart() {
+    const C = CONFIG.DIRECTION;
+    const last = Profile.get('lastStartDir');
+    if (!C.ENABLED || !C.VARY_START || Profile.get('totalGames') === 0) return this.rememberStart('down');
+    const options = Object.keys(DIRECTIONS).filter(d => d !== last);
+    return this.rememberStart(options[Math.floor(Math.random() * options.length)]);
+  },
+  rememberStart(dir) { Profile.set('lastStartDir', dir); return dir; },
+
+  reset() {
+    game.alert = null;
+    game.startBanner = 0;
+    game.directionChanges = 0;
+    game.nextChangeShapes = CONFIG.DIRECTION.FIRST_AT_SHAPES;
+    this.hideAlert();
+    if (world.dir !== 'down') this.showStartBanner();
+  },
+
+  /** Non-blocking reminder of where shapes come from and how to control the player. */
+  showStartBanner() {
+    const D = DIRECTIONS[world.dir];
+    game.startBanner = CONFIG.DIRECTION.START_BANNER_FRAMES;
+    game.nextSpawnFrame = Math.max(game.nextSpawnFrame, CONFIG.DIRECTION.START_SPAWN_DELAY);
+    document.getElementById('dirTitle').textContent = 'NEW VIEW';
+    document.getElementById('dirSub').innerHTML = `SHAPES COME FROM THE ${D.from}<br>${D.hint}`;
+    document.getElementById('dirAlert').classList.add('show');
+  },
+
+  /** Called after every catch: warn once the run has advanced far enough. */
+  onCatch() {
+    if (!CONFIG.DIRECTION.ENABLED || game.alert || game.over || game.mode !== 'run') return;
+    if (game.correctCount >= game.nextChangeShapes) this.startAlert();
+  },
+
+  startAlert() {
+    const options = Object.keys(DIRECTIONS).filter(d => d !== world.dir);
+    const to = options[Math.floor(Math.random() * options.length)];
+    game.alert = { to, frames: CONFIG.DIRECTION.ALERT_FRAMES, shown: null };
+    AudioManager.play('alert');
+    document.getElementById('dirTitle').textContent = '⚠ DIRECTION CHANGE';
+    document.getElementById('dirAlert').classList.add('show');
+    this.renderCountdown();
+  },
+
+  renderCountdown() {
+    const a = game.alert, D = DIRECTIONS[a.to];
+    const secs = Math.ceil(a.frames / 60);
+    if (a.shown === secs) return;
+    a.shown = secs;
+    document.getElementById('dirSub').innerHTML = `SHAPES WILL COME FROM THE ${D.from} IN ${secs}<br>${D.hint}`;
+  },
+
+  hideAlert() { document.getElementById('dirAlert').classList.remove('show'); },
+
+  /** Hides the start / boss banner once its time is up (unless a warning has taken the slot). */
+  tickBanner() {
+    if (game.startBanner > 0 && --game.startBanner === 0 && !game.alert && game.mode !== 'warn') this.hideAlert();
+  },
+
+  tick() {
+    if (!game.alert) return;
+    if (--game.alert.frames <= 0) this.commit();
+    else this.renderCountdown();
+  },
+
+  /** Rotate the world. Shapes still in flight vanish without penalty; spawning resumes after a short beat. */
+  commit() {
+    const { to } = game.alert;
+    const [minGap, maxGap] = CONFIG.DIRECTION.GAP_SHAPES;
+    game.alert = null;
+    this.hideAlert();
+    setWorld(to);
+    const p = game.player;
+    p.jumping = false; p.vy = 0; p.rotation = 0;
+    p.y = p.baseY;
+    p.currentX = laneX(p.targetLane);
+    game.fallingShapes = []; game.floaters = []; game.particles = []; game.trails = []; game.explosions = [];
+    game.nextSpawnFrame = game.frame + CONFIG.DIRECTION.POST_SWITCH_SPAWN_DELAY;
+    game.nextChangeShapes = game.correctCount + minGap + Math.floor(Math.random() * (maxGap - minGap + 1));
+    game.directionChanges++;
+    const flash = document.getElementById('turnFlash');
+    flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
+    AudioManager.play('turn');
+  },
+};
+
+const ScoreManager = {
+  precisionFor(offset) {
+    const name = offset <= CONFIG.PERFECT_THRESHOLD ? 'PERFECT' : offset <= CONFIG.GREAT_THRESHOLD ? 'GREAT' : 'GOOD';
+    return { name, mult: CONFIG.PRECISION_MULT[name] };
+  },
+  gain(comboMult, precision) { return Math.round(CONFIG.BASE_SCORE * comboMult * precision.mult); },
+};
+
 
 const GEO_SHAPES  = ['circle','triangle','square','diamond','pentagon','star','hexagon','cross'];
 const EMOJI_SETS  = ['😀','😎','🤩','😜','🥳','😈','🤖','👽'];
@@ -355,6 +802,7 @@ let game = {};
 let currentUser = null;
 let selectedTheme = 'geo';
 let raf = null;
+let lastFrameTime = 0, accumulator = 0;
 let stars = [];
 
 // ═══════════════════════════════════════════════════════
@@ -370,15 +818,19 @@ window.addEventListener('DOMContentLoaded', () => {
   initStars();
   drawMenuBg();
   setupUI();
+  document.getElementById('userInput').value = Profile.get('lastId');
+  selectedTheme = isThemeUnlocked(Profile.get('theme')) ? Profile.get('theme') : 'geo';
+  renderThemePicker();
+  renderSkinPicker();
+  const params = new URLSearchParams(location.search);
+  if (params.has('debug')) Profile.set('debug', true);
+  if (params.has('boss') && Profile.get('lastId')) handleStart({ bossOnly: true });   // shortcut straight into the fight
 });
 
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  if (game.player) {
-    game.player.baseY = canvas.height * 0.78;
-    if (!game.player.jumping) game.player.y = game.player.baseY;
-  }
+  setWorld(world ? world.dir : 'down');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -426,46 +878,90 @@ function drawMenuBg() {
 // ═══════════════════════════════════════════════════════
 function setupUI() {
   // Theme picker
-  document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedTheme = btn.dataset.theme;
-    });
+  document.getElementById('themePicker').addEventListener('click', e => {
+    const btn = e.target.closest('.theme-btn');
+    if (btn) selectTheme(btn.dataset.theme);
   });
 
-  document.getElementById('btnStart').addEventListener('click', handleStart);
+  document.getElementById('btnStart').addEventListener('click', () => handleStart());
+  document.getElementById('btnBossPractice').addEventListener('click', () => handleStart({ bossOnly: true }));
   document.getElementById('userInput').addEventListener('keydown', e => { if (e.key === 'Enter') handleStart(); });
   document.getElementById('btnLeaderboard').addEventListener('click', showLeaderboard);
   document.getElementById('btnBackLb').addEventListener('click', () => show('screenWelcome'));
-  document.getElementById('btnReplay').addEventListener('click', () => { show('screenWelcome'); setTimeout(handleStart, 50); });
+  document.getElementById('btnReplay').addEventListener('click', retry);
+  document.getElementById('btnBossRetry').addEventListener('click', retryBoss);
+  document.getElementById('skinPicker').addEventListener('click', e => {
+    const btn = e.target.closest('.theme-btn');
+    if (btn) selectSkin(btn.dataset.skin);
+  });
   document.getElementById('btnHome').addEventListener('click', () => { show('screenWelcome'); drawMenuBg(); });
+
+  const oneLifeBtn = document.getElementById('btnOneLife');
+  const renderOneLife = () => {
+    const on = Profile.get('oneLife');
+    oneLifeBtn.classList.toggle('on', on);
+    oneLifeBtn.setAttribute('aria-pressed', on);
+    oneLifeBtn.innerHTML = (on ? '☠ 1 VIDA · ON' : '☠ 1 VIDA · OFF') +
+      `<small>${on ? 'Un solo error y se acaba · récord aparte (solo en este dispositivo)' : 'Modo difícil: sin segunda oportunidad'}</small>`;
+  };
+  oneLifeBtn.addEventListener('click', () => { Profile.set('oneLife', !Profile.get('oneLife')); renderOneLife(); });
+  renderOneLife();
+
+  // Audio: browsers need a user gesture before sound can play
+  const muteBtn = document.getElementById('btnMute');
+  const renderMute = () => { muteBtn.textContent = Profile.get('muted') ? '🔇' : '🔊'; };
+  muteBtn.addEventListener('click', () => { AudioManager.unlock(); AudioManager.toggleMute(); renderMute(); });
+  document.addEventListener('pointerdown', () => AudioManager.unlock(), { once: true });
+  document.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() === 'm' && document.activeElement.tagName !== 'INPUT') { AudioManager.toggleMute(); renderMute(); }
+  });
+  renderMute();
 
   // Touch controls
   setupTouchControls();
 }
 
-async function handleStart() {
+function selectTheme(theme) {
+  if (!THEMES[theme]) return;
+  if (!isThemeUnlocked(theme)) {
+    document.getElementById('themeHint').textContent =
+      `REACH ${THEMES[theme].unlockAt.toLocaleString()} TOTAL POINTS TO UNLOCK ${THEMES[theme].label.toUpperCase()}`;
+    return;
+  }
+  selectedTheme = theme;
+  Profile.set('theme', theme);
+  renderThemePicker();
+}
+
+async function handleStart(opts = {}) {
   const raw = document.getElementById('userInput').value.trim();
   const id = raw.toUpperCase().replace(/[^A-Z0-9_]/g,'');
   const err = document.getElementById('inputError');
   if (id.length < 2) { err.textContent = 'ID debe tener al menos 2 caracteres'; return; }
   err.textContent = '';
+  Profile.set('lastId', id);
 
+  AudioManager.unlock();
   try {
     const res = await fetch(`${API}/user`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id }),
+      signal: AbortSignal.timeout(CONFIG.API_TIMEOUT_MS),
     });
+    if (res.status >= 400 && res.status < 500) {   // our input was rejected: tell the player
+      const data = await res.json().catch(() => ({}));
+      err.textContent = data.error || 'ID inválido';
+      return;
+    }
+    if (!res.ok) throw new Error('server unavailable');   // 5xx: play offline instead of blocking
     const data = await res.json();
-    if (!res.ok) { err.textContent = data.error || 'Error de servidor'; return; }
     currentUser = { id: data.id, record: data.record || 0 };
-    startGame();
+    startGame(opts);
   } catch(e) {
     // offline fallback
     currentUser = { id, record: 0, offline: true };
-    startGame();
+    startGame(opts);
   }
 }
 
@@ -474,7 +970,8 @@ async function handleStart() {
 // ═══════════════════════════════════════════════════════
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
+  if (id) document.getElementById(id).classList.remove('hidden');
+  document.getElementById('btnMute').classList.toggle('hidden', !id);
 }
 
 function showTab(tab) {
@@ -606,32 +1103,40 @@ function hexRgb(hex){return`${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(
 // ═══════════════════════════════════════════════════════
 //  GAME INIT
 // ═══════════════════════════════════════════════════════
-function laneX(lane) { return (canvas.width / LANE_COUNT) * lane + (canvas.width / LANE_COUNT) / 2; }
+function laneX(lane, g = world) { return g.offset + g.laneW * (lane + 0.5); }
 
-function startGame() {
+function startGame(opts = {}) {
   if (raf) cancelAnimationFrame(raf);
   if (menuRaf) cancelAnimationFrame(menuRaf);
   show(null); // hide all screens
+  setWorld(opts.bossOnly ? 'down' : DirectionManager.pickStart());
 
   const theme = selectedTheme;
+  const oneLife = Profile.get('oneLife');
   const list = getEntityList(theme);
   const entity = list[Math.floor(Math.random() * list.length)];
   const color  = COLORS[Math.floor(Math.random() * COLORS.length)];
 
   game = {
-    running: true,
-    score: 0, lives: 3, level: 1,
-    speed: 3.2, spawnRate: 85, frame: 0,
-    correctCount: 0, combo: 0, bestCombo: 0,
-    xp: 0, xpNeeded: 5,
+    running: true, over: false, overTimer: 0,
+    mode: 'run', practice: !!opts.bossOnly, bossDefeated: false, bossBonus: 0, bossHits: 0, boss: null,
+    bullets: [], shots: [], gifts: [],
+    newBest: false, startedAt: performance.now(),
+    score: 0, displayScore: 0, lives: oneLife ? 1 : CONFIG.START_LIVES,
+    speed: CONFIG.MIN_SPEED, spawnRate: CONFIG.SPAWN_INTERVAL.EASY, frame: 0,
+    nextSpawnFrame: CONFIG.FIRST_SPAWN_FRAME, spawned: 0,
+    correctCount: 0, fails: 0, perfects: 0, combo: 0, bestCombo: 0,
+    oneLife,
+    maxLives: oneLife ? 1 : CONFIG.START_LIVES,
+    bestAtStart: oneLife ? Profile.get('bestScoreOneLife') : Math.max(Profile.get('bestScore'), currentUser?.record || 0),
     theme,
     particles: [], fallingShapes: [], explosions: [],
-    bgParticles: [], trails: [],
+    bgParticles: [], trails: [], floaters: [], shake: 0,
     player: {
       lane: 1, targetLane: 1,
       entity, color,
       y: 0, vy: 0, jumping: false,
-      baseY: canvas.height * 0.78,
+      baseY: playerBaseY(),
       scale: 1, scaleAnim: 0,
       invincible: 0, wobble: 0,
       rotation: 0,
@@ -641,57 +1146,140 @@ function startGame() {
   };
   game.player.y = game.player.baseY;
   game.player.currentX = laneX(1);
+  DifficultyManager.reset();
+  DirectionManager.reset();
+  document.body.classList.remove('boss');
+  if (opts.bossOnly) BossManager.start();
+  else if (Profile.get('totalGames') < CONFIG.INTRO_HINT_GAMES) showFlash('CATCH THE SHAPE BELOW ↓', '#00f5ff');
 
   updateHUD();
   updateHint();
-  document.getElementById('hudUser').textContent = currentUser?.id || '—';
-  loop();
+  lastFrameTime = performance.now();
+  accumulator = 0;
+  raf = requestAnimationFrame(loop);
 }
 
 // ═══════════════════════════════════════════════════════
 //  GAME LOOP
 // ═══════════════════════════════════════════════════════
-function loop() {
+function loop(now) {
   if (!game.running) return;
-  game.frame++;
+  // Fixed 60Hz simulation: game speed is identical on 60/120/144Hz displays.
+  accumulator += Math.min(now - lastFrameTime, CONFIG.MAX_FRAME_MS);
+  lastFrameTime = now;
+  while (game.running && accumulator >= CONFIG.STEP_MS) {
+    step();
+    accumulator -= CONFIG.STEP_MS;
+  }
+  if (!game.running) return;   // the run ended during this frame
+  draw();
+  raf = requestAnimationFrame(loop);
+}
 
-  if (game.frame % game.spawnRate === 0) spawnFallingShape();
+function step() {
+  game.frame++;
+  const inBoss = game.mode === 'boss';
+
+  if (game.over) {
+    if (--game.overTimer <= 0) { endGame(); return; }
+  } else if (!inBoss) {
+    DifficultyManager.tick();
+    DirectionManager.tick();
+    BossManager.tickWarn();
+    if (game.mode === 'run' && !game.alert && game.frame >= game.nextSpawnFrame) spawnWave();
+  }
+  DirectionManager.tickBanner();
   if (game.frame % 3 === 0) spawnBgParticle();
 
   updatePlayer();
-  updateShapes();
+  if (inBoss) { if (!game.over) BossManager.update(); }
+  else updateShapes();
+  if (!game.running) return;      // the boss fight can end the run from inside update()
   updateParticles();
   updateExplosions();
   updateBgParticles();
   updateTrails();
+  Fx.update();
+  tweenScoreDisplay();
+  if (game.frame % CONFIG.DEBUG_UPDATE_STEPS === 0) renderDebug();
+}
 
-  draw();
-  raf = requestAnimationFrame(loop);
+function bumpScore() {
+  const el = document.getElementById('hudScore');
+  el.classList.remove('bump');
+  void el.offsetWidth;  // restart the CSS animation
+  el.classList.add('bump');
+}
+
+/** Counts the HUD score up instead of jumping. */
+function tweenScoreDisplay() {
+  const gap = game.score - game.displayScore;
+  if (gap === 0) return;
+  game.displayScore = Math.abs(gap) < 1 ? game.score : game.displayScore + gap * CONFIG.SCORE_TWEEN;
+  const el = document.getElementById('hudScore');
+  el.textContent = Math.round(game.displayScore).toLocaleString();
 }
 
 // ═══════════════════════════════════════════════════════
 //  SPAWN
 // ═══════════════════════════════════════════════════════
-function spawnFallingShape() {
-  const lane = Math.floor(Math.random() * LANE_COUNT);
-  const isMatch = Math.random() < 0.32;
-  let entity, color;
-  const list = getEntityList(game.theme);
+// The target is whatever the player currently looks like; catching it evolves the player.
+function isTarget(shape) {
+  return shape.entity === game.player.entity && shape.color === game.player.color;
+}
 
-  if (isMatch) {
-    entity = game.player.entity;
-    color  = game.player.color;
-  } else {
-    const t = Math.random();
-    const otherEntities = list.filter(e => e !== game.player.entity);
-    const otherColors   = COLORS.filter(c => c !== game.player.color);
-    if (t < 0.38)      { entity = otherEntities[Math.floor(Math.random()*otherEntities.length)]; color = game.player.color; }
-    else if (t < 0.76) { entity = game.player.entity; color = otherColors[Math.floor(Math.random()*otherColors.length)]; }
-    else               { entity = otherEntities[Math.floor(Math.random()*otherEntities.length)]; color = otherColors[Math.floor(Math.random()*otherColors.length)]; }
+// What the player will become after the next catch (evolution is deterministic).
+function nextTarget() {
+  const p = game.player;
+  const list = getEntityList(game.theme);
+  return {
+    entity: list[(list.indexOf(p.entity) + 1) % list.length],
+    color: COLORS[(COLORS.indexOf(p.color) + 1) % COLORS.length],
+  };
+}
+
+function pickOther(list, exclude) {
+  const options = list.filter(v => v !== exclude);
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+// Decoys never look like the current target NOR the next one, so what you see is what scores.
+// At higher difficulty more decoys are "lookalikes": same colour or same shape as the target.
+function makeDecoy() {
+  const p = game.player;
+  const next = nextTarget();
+  const list = getEntityList(game.theme);
+  const lookalike = Math.random() < game.params.lookalikeChance;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    let entity, color;
+    if (lookalike && Math.random() < 0.5) { entity = pickOther(list, p.entity); color = p.color; }
+    else if (lookalike)                   { entity = p.entity; color = pickOther(COLORS, p.color); }
+    else                                  { entity = pickOther(list, p.entity); color = pickOther(COLORS, p.color); }
+    if (entity === next.entity && color === next.color) continue;
+    return { entity, color };
   }
+  return { entity: pickOther(list, p.entity), color: p.color };
+}
+
+/** One wave = 1 shape, or 2 in different lanes at higher difficulty (never all lanes at once). */
+function spawnWave() {
+  const lanes = [...Array(LANE_COUNT).keys()].sort(() => Math.random() - 0.5);
+  const isDouble = game.spawned > 0 && Math.random() < game.params.doubleChance;
+  const count = isDouble ? 2 : 1;
+  for (let i = 0; i < count; i++) spawnFallingShape(lanes[i]);
+  const jitter = 1 + (Math.random() * 2 - 1) * CONFIG.SPAWN_JITTER;
+  game.nextSpawnFrame = game.frame + Math.max(1, Math.round(game.spawnRate * jitter));
+}
+
+function spawnFallingShape(lane) {
+  // Only one target-looking shape in flight at a time: catching it changes the target.
+  const targetInFlight = game.fallingShapes.some(isTarget);
+  const wantTarget = game.spawned === 0 || (!targetInFlight && Math.random() < game.params.targetChance);
+  const look = wantTarget ? { entity: game.player.entity, color: game.player.color } : makeDecoy();
+  game.spawned++;
 
   game.fallingShapes.push({
-    lane, entity, color, isMatch,
+    lane, entity: look.entity, color: look.color,
     y: -50, size: 22,
     rotation: 0, rotSpeed: (Math.random()-0.5)*0.08,
     wobble: 0, wobbleSpeed: Math.random()*0.1+0.05,
@@ -702,8 +1290,8 @@ function spawnFallingShape() {
 
 function spawnBgParticle() {
   game.bgParticles.push({
-    x: Math.random() * canvas.width,
-    y: canvas.height + 10,
+    x: Math.random() * world.w,
+    y: world.h + 10,
     vy: -(Math.random()*1.5+0.5),
     vx: (Math.random()-0.5)*0.5,
     r: Math.random()*2+0.5,
@@ -713,6 +1301,7 @@ function spawnBgParticle() {
 }
 
 function spawnParticles(x, y, color, count=16) {
+  count = Math.min(count, CONFIG.PARTICLE_AMOUNT.MAX_ALIVE - game.particles.length);
   for (let i=0;i<count;i++) {
     const angle = (Math.PI*2/count)*i + Math.random()*0.5;
     const speed = 3 + Math.random()*6;
@@ -727,9 +1316,8 @@ function spawnParticles(x, y, color, count=16) {
 
 function spawnExplosion(x, y, color) {
   game.explosions.push({ x, y, color, frame:0, maxFrame:28 });
-  spawnParticles(x, y, color, 22);
-  // screen shake
-  game.shake = 10;
+  spawnParticles(x, y, color, CONFIG.PARTICLE_AMOUNT.WRONG);
+  game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.WRONG;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -738,10 +1326,14 @@ function spawnExplosion(x, y, color) {
 function updatePlayer() {
   const p = game.player;
 
-  // Smooth lane movement
-  const targetX = laneX(p.targetLane);
-  p.currentX += (targetX - p.currentX) * 0.18;
-  p.lane = p.targetLane;
+  if (game.mode === 'boss') {
+    BossManager.movePlayer();
+  } else {
+    // Smooth lane movement
+    const targetX = laneX(p.targetLane);
+    p.currentX += (targetX - p.currentX) * 0.18;
+    p.lane = p.targetLane;
+  }
 
   // Jump physics
   if (p.jumping) {
@@ -752,19 +1344,22 @@ function updatePlayer() {
   }
 
   // Scale anim (collect bounce)
+  // Squash & stretch: pop taller and thinner on catch, settle back.
   if (p.scaleAnim > 0) {
-    p.scale = 1 + Math.sin(p.scaleAnim * 0.28) * 0.28;
+    const k = Math.sin(p.scaleAnim * 0.13) * 0.26;
+    p.scale = 1 + k * 0.6;
+    p.squash = k;
     p.scaleAnim--;
-    if (p.scaleAnim <= 0) p.scale = 1;
+    if (p.scaleAnim <= 0) { p.scale = 1; p.squash = 0; }
   }
 
   // Trail
-  game.trails.push({ x: p.currentX, y: p.y, color: p.color, alpha: 0.35, size: 26 });
+  game.trails.push({ x: p.currentX, y: p.y, color: activeSkin().trail || p.color, alpha: 0.35, size: 26 });
   if (game.trails.length > 12) game.trails.shift();
 
   if (p.invincible > 0) p.invincible--;
   if (p.wobble > 0) p.wobble--;
-  if (game.shake > 0) game.shake -= 0.8;
+  if (game.shake > 0) game.shake = Math.max(0, game.shake - CONFIG.SCREEN_SHAKE_AMOUNT.DECAY);
 }
 
 function spawnLandDust() {
@@ -779,70 +1374,123 @@ function spawnLandDust() {
   }
 }
 
+function laneWidth(g = world) { return g.laneW; }
+
 function updateShapes() {
-  for (let i=game.fallingShapes.length-1;i>=0;i--) {
+  const p = game.player;
+  for (let i = game.fallingShapes.length - 1; i >= 0; i--) {
     const s = game.fallingShapes[i];
-    s.y += game.speed;
+    s.y += game.speed * world.scale;
     s.rotation += s.rotSpeed;
     s.scalePhase += s.wobbleSpeed;
-    s.scale = 1 + Math.sin(s.scalePhase)*0.08;
+    s.scale = 1 + Math.sin(s.scalePhase) * 0.08;
 
-    // Save trail point
     s.trail.push({ x: laneX(s.lane), y: s.y, alpha: 0.3 });
     if (s.trail.length > 6) s.trail.shift();
 
-    const p = game.player;
-    const dist = Math.abs(s.y - p.y);
-    const sameX = Math.abs(laneX(s.lane) - p.currentX) < canvas.width/LANE_COUNT * 0.6;
+    const dx = Math.abs(laneX(s.lane) - p.currentX);
+    const dy = Math.abs(s.y - p.y);
+    const hitDx = laneWidth() * CONFIG.HIT_X_LANE_FRACTION;
+    const inReach = dx < hitDx && dy < CONFIG.HIT_Y_PX;
 
-    if (sameX && dist < 36 && p.invincible === 0) {
-      const px = p.currentX;
+    // Distance (px) by which this shape has missed the catch window, at its closest.
+    s.closestGap = Math.min(s.closestGap ?? Infinity, Math.hypot(Math.max(0, dx - hitDx), Math.max(0, dy - CONFIG.HIT_Y_PX)));
+
+    // Correct shapes can always be caught; invincibility only shields from damage.
+    if (inReach && (isTarget(s) || p.invincible === 0) && !game.over) {
       game.fallingShapes.splice(i, 1);
-
-      if (s.isMatch) {
-        // ✅ CORRECT
-        game.combo++;
-        if (game.combo > game.bestCombo) game.bestCombo = game.combo;
-        game.score += (10 + game.combo * 2) * game.level;
-        p.scaleAnim = 24;
-        spawnParticles(px, p.y, p.color, 20);
-        showCombo(game.combo);
-
-        // XP & level up
-        game.xp++;
-        if (game.xp >= game.xpNeeded) {
-          game.xp = 0;
-          game.xpNeeded = Math.ceil(game.xpNeeded * 1.3);
-          game.level++;
-          game.speed = 3.2 + game.level * 0.5;
-          game.spawnRate = Math.max(32, 85 - game.level * 8);
-          showLevelUp(game.level);
-        }
-
-        // Evolve player
-        const list = getEntityList(game.theme);
-        const ni = list.indexOf(p.entity);
-        const ci = COLORS.indexOf(p.color);
-        p.entity = list[(ni+1) % list.length];
-        p.color  = COLORS[(ci+1) % COLORS.length];
-        game.correctCount++;
-        updateHUD(); updateHint();
-      } else {
-        // ❌ WRONG
-        game.combo = 0;
-        spawnExplosion(px, p.y, s.color);
-        p.invincible = 90; p.wobble = 24;
-        game.lives--;
-        updateHUD();
-        if (game.lives <= 0) setTimeout(endGame, 500);
-      }
+      if (isTarget(s)) onCatch(s, dx / laneWidth());
+      else onWrongHit(s);
       continue;
     }
-    if (s.y > canvas.height + 60) {
-      if (s.isMatch && game.combo > 0) game.combo = 0; // miss resets combo
-      game.fallingShapes.splice(i,1);
+
+    // Shape went below the player row: it can no longer be caught.
+    if (!s.passed && s.y > p.baseY + CONFIG.HIT_Y_PX) {
+      s.passed = true;
+      if (isTarget(s) && !game.over) onMissedTarget(s);
     }
+    if (s.y > world.h + 60) game.fallingShapes.splice(i, 1);
   }
+}
+
+/** Player caught the target. `offset` = horizontal error as a fraction of lane width. */
+function onCatch(s, offset) {
+  const p = game.player;
+  const precision = ScoreManager.precisionFor(offset);
+  const prevTier = ComboManager.tierIndex(game.combo);
+
+  game.combo++;
+  game.bestCombo = Math.max(game.bestCombo, game.combo);
+  game.correctCount++;
+  if (precision.name === 'PERFECT') game.perfects++;
+
+  DifficultyManager.onHit();
+  const mult = ComboManager.multiplierFor(game.combo);
+  const gain = ScoreManager.gain(mult, precision);
+  game.score += gain;
+  bumpScore();
+
+  const perfect = precision.name === 'PERFECT';
+  const phaseBefore = game.phase;
+  p.scaleAnim = 24;
+  spawnParticles(p.currentX, p.y, p.color, CONFIG.PARTICLE_AMOUNT.CATCH + (perfect ? CONFIG.PARTICLE_AMOUNT.PERFECT_EXTRA : 0));
+  const tierUp = ComboManager.tierIndex(game.combo) > prevTier;
+  const tierColor = COMBO_COLORS[ComboManager.tierIndex(game.combo)];
+  const SH = CONFIG.SCREEN_SHAKE_AMOUNT;
+  game.shake = Math.max(game.shake || 0, tierUp ? SH.TIER_UP : perfect ? SH.PERFECT : SH.CATCH);
+  Fx.floatText(p.currentX, p.y, '+' + gain, tierColor, 26, 1, -60);
+  Fx.floatText(p.currentX, p.y, precision.name, perfect ? '#ffffff' : 'rgba(255,255,255,0.7)', 15, 1, -88);
+  if (tierUp) Fx.floatText(p.currentX, p.y, 'COMBO x' + mult, tierColor, 22, 1.25, -122);
+
+  const milestone = CONFIG.MILESTONES.includes(game.correctCount);
+  if (milestone) {
+    // Purely informational: "SPEED UP!" only when the pace really stepped up on this catch.
+    const sped = game.phase !== phaseBefore;
+    showFlash(game.correctCount + ' SHAPES!' + (sped ? ' · SPEED UP!' : ''), '#06d6a0');
+  }
+  const newBestNow = !game.newBest && game.bestAtStart > 0 && game.score > game.bestAtStart;
+  if (newBestNow) {
+    game.newBest = true;
+    showFlash('NEW BEST!', '#ffbe0b');
+    Fx.floatText(p.currentX, p.y, 'NEW BEST!', '#ffbe0b', 20, 1.25, -150);
+  }
+  AudioManager.play(newBestNow ? 'newRecord' : tierUp ? 'comboUp' : milestone ? 'milestone' : perfect ? 'perfect' : 'correct');
+
+  const next = nextTarget();
+  p.entity = next.entity;
+  p.color  = next.color;
+
+  DirectionManager.onCatch();
+  BossManager.onCatch();
+  updateHUD(tierUp ? 'pop' : null);
+  updateHint();
+}
+
+function onWrongHit(s) {
+  const p = game.player;
+  const hadCombo = game.combo > 1;
+  game.combo = 0;
+  game.fails++;
+  DifficultyManager.onError();
+  spawnExplosion(p.currentX, p.y, s.color);
+  AudioManager.play('error');
+  Fx.floatText(p.currentX, p.y, 'OUCH', '#ff006e', 22, 1, -60);
+  p.invincible = 90; p.wobble = 24;
+  game.lives--;
+  updateHUD(hadCombo ? 'lost' : null);
+  if (game.lives <= 0) { game.over = true; game.overTimer = CONFIG.GAME_OVER_DELAY_FRAMES; }
+}
+
+/** A target slipped past. Only "near" if it really came within NEAR_MISS_PX of the catch window. */
+function onMissedTarget(s) {
+  const hadCombo = game.combo > 1;
+  game.combo = 0;
+  game.fails++;
+  DifficultyManager.onError();
+  const near = s.closestGap <= CONFIG.NEAR_MISS_PX;
+  AudioManager.play('miss');
+  Fx.floatText(laneX(s.lane), game.player.baseY + 70, near ? 'SO CLOSE' : 'MISSED', near ? '#ffbe0b' : 'rgba(255,255,255,0.55)', near ? 20 : 16);
+  updateHUD(hadCombo ? 'lost' : null);
 }
 
 function updateParticles() {
@@ -886,47 +1534,66 @@ function draw() {
   ctx.save();
   ctx.translate(sx, sy);
 
-  drawBackground();
-  drawBgParticles();
-  drawLaneHighlights();
-  drawShapeTrails();
-  drawFallingShapes();
-  drawPlayerTrail();
-  drawExplosions();
-  drawParticles();
-  drawPlayer();
-  drawXPBar();
+  drawSpace();                       // screen space: backdrop + stars drifting with the travel direction
+
+  ctx.save();
+  applyWorldTransform();             // world space: everything that has a lane
+  if (game.mode === 'boss') {
+    drawBgParticles();
+    drawBossScene();
+    drawPlayerTrail();
+    drawExplosions();
+    drawParticles();
+    drawPlayer();
+  } else {
+    drawLanes();
+    drawBgParticles();
+    drawLaneHighlights();
+    drawShapeTrails();
+    drawFallingShapes();
+    drawPlayerTrail();
+    drawExplosions();
+    drawParticles();
+    drawPlayer();
+  }
+  ctx.restore();
+
+  drawDirectionAlert();
+  Fx.draw();
 
   ctx.restore();
 }
 
-function drawBackground() {
-  // Deep space gradient
+function drawSpace() {
   const grad = ctx.createLinearGradient(0,0,0,canvas.height);
   grad.addColorStop(0,'#04040f');
   grad.addColorStop(1,'#080820');
   ctx.fillStyle = grad;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // Stars
+  const [vx, vy] = world.vec;
   for(const s of stars){
     s.twinkle+=0.015;
     const a=s.alpha+Math.sin(s.twinkle)*0.1;
     ctx.fillStyle=`rgba(255,255,255,${Math.max(0,a)})`;
     ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
-    s.y+=s.speed*0.3;
-    if(s.y>canvas.height){s.y=0;s.x=Math.random()*canvas.width;}
+    s.x+=vx*s.speed*0.3*2; s.y+=vy*s.speed*0.3*2;
+    if(s.y>canvas.height) { s.y=0; s.x=Math.random()*canvas.width; }
+    else if(s.y<0)        { s.y=canvas.height; s.x=Math.random()*canvas.width; }
+    if(s.x>canvas.width)  { s.x=0; s.y=Math.random()*canvas.height; }
+    else if(s.x<0)        { s.x=canvas.width; s.y=Math.random()*canvas.height; }
   }
+}
 
-  // Lane lines
-  const lw = canvas.width/LANE_COUNT;
+function drawLanes() {
+  const lw = world.laneW;
   for(let i=1;i<LANE_COUNT;i++){
     ctx.save();
     ctx.strokeStyle='rgba(255,255,255,0.05)';
     ctx.lineWidth=1;
     ctx.setLineDash([16,28]);
     ctx.lineDashOffset=-(game.frame*2.5%44);
-    ctx.beginPath(); ctx.moveTo(lw*i,0); ctx.lineTo(lw*i,canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(world.offset+lw*i,0); ctx.lineTo(world.offset+lw*i,world.h); ctx.stroke();
     ctx.restore();
   }
 
@@ -936,12 +1603,159 @@ function drawBackground() {
   grd.addColorStop(0,'transparent');
   grd.addColorStop(0.5,`rgba(${hexRgb(game.player.color)},0.25)`);
   grd.addColorStop(1,'transparent');
-  ctx.fillStyle=grd; ctx.fillRect(0,gy-20,canvas.width,40);
+  ctx.fillStyle=grd; ctx.fillRect(0,gy-20,world.w,40);
 
   ctx.strokeStyle=`rgba(${hexRgb(game.player.color)},0.4)`;
   ctx.lineWidth=2; ctx.shadowBlur=12; ctx.shadowColor=game.player.color;
-  ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(canvas.width,gy); ctx.stroke();
+  ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(world.w,gy); ctx.stroke();
   ctx.shadowBlur=0;
+}
+
+/** Warning while a direction change is pending: arrows where shapes will enter, and where you will be. */
+function drawDirectionAlert() {
+  const a = game.alert;
+  if (!a) return;
+  const g = geometry(a.to), p = game.player;
+  const pulse = 0.5 + 0.5 * Math.sin(game.frame * 0.25);
+  ctx.save();
+  ctx.fillStyle = '#ff006e'; ctx.shadowColor = '#ff006e'; ctx.shadowBlur = 14;
+  const heading = Math.atan2(g.vec[1], g.vec[0]);
+  for (let l = 0; l < LANE_COUNT; l++) {
+    const [sx, sy] = toScreen(laneX(l, g), 30 + (game.frame * 2.2) % 50, g);
+    ctx.save();
+    ctx.translate(sx, sy); ctx.rotate(heading);
+    ctx.globalAlpha = 0.35 + 0.4 * pulse;
+    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-10, -13); ctx.lineTo(-10, 13); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  const [gx, gy] = toScreen(laneX(p.targetLane, g), playerBaseY(g), g);
+  ctx.globalAlpha = 0.45 + 0.4 * pulse; ctx.shadowBlur = 0;
+  ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.arc(gx, gy, 36, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawBossScene() {
+  drawHearts();
+  drawGifts();
+  drawBoss();
+  drawBossBullets();
+  drawShots();
+}
+
+function drawHearts() {
+  for (const h of game.hearts) {
+    const pulse = 0.5 + 0.5 * Math.sin(game.frame * 0.2);
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.scale(1 + 0.08 * pulse, 1 + 0.08 * pulse);
+    ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = 22;
+    ctx.fillStyle = '#ff4d6d';
+    ctx.beginPath();                                  // heart: two lobes and a point
+    ctx.moveTo(0, 12);
+    ctx.bezierCurveTo(-22, -4, -14, -22, 0, -10);
+    ctx.bezierCurveTo(14, -22, 22, -4, 0, 12);
+    ctx.fill();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 0.6; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(-7, -9, 3.5, 2.2, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawGifts() {
+  const p = game.player;
+  for (const g of game.gifts) {
+    const pulse = 0.5 + 0.5 * Math.sin(game.frame * 0.2);
+    ctx.save();
+    ctx.globalAlpha = 0.5 + 0.4 * pulse; ctx.strokeStyle = p.color; ctx.lineWidth = 3;
+    ctx.shadowBlur = 22; ctx.shadowColor = p.color;
+    ctx.beginPath(); ctx.arc(g.x, g.y, CONFIG.BOSS.GIFT.CATCH_RADIUS * (0.9 + 0.12 * pulse), 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    drawEntity(ctx, game.theme, p.entity, g.x, g.y, 22, p.color, 1, true, (game.frame - g.born) * 0.03);
+  }
+}
+
+function drawBossBullets() {
+  for (const bl of game.bullets) drawEntity(ctx, game.theme, bl.entity, bl.x, bl.y, bl.size, bl.color, 1, true, bl.rot);
+}
+
+function drawShots() {
+  for (const s of game.shots) {
+    ctx.save();
+    ctx.fillStyle = s.color; ctx.shadowColor = s.color; ctx.shadowBlur = s.power ? 26 : 12;
+    ctx.globalAlpha = s.power ? 0.95 : 0.85;
+    ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r * (s.power ? 1 : 0.7), s.r * (s.power ? 1.8 : 2.4), 0, 0, Math.PI * 2); ctx.fill();
+    if (s.power) { ctx.globalAlpha = 0.5; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.5, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+}
+
+/** The alien: drawn in a 220-wide design space and scaled to the screen. */
+function drawBoss() {
+  const b = game.boss;
+  if (!b) return;
+  const k = BossManager.width() / 220;
+  const palette = [['#7CFC00', '#2b0a4d', '#b6ff6a'], ['#ffbe0b', '#4d0a2b', '#ffe08a'], ['#ff2a55', '#4d0a0a', '#ff8fa3']][b.phase];
+  const [glow, dark, light] = palette;
+  const p = game.player;
+  const dying = b.state === 'dying';
+  ctx.save();
+  ctx.translate(b.x + (dying ? (Math.random() - 0.5) * 8 : 0), b.y + (dying ? (Math.random() - 0.5) * 8 : 0));
+  ctx.scale(k, k);
+  if (dying) ctx.globalAlpha = 1 - b.dying / (CONFIG.BOSS.DEATH_FRAMES * 1.15);
+  ctx.shadowColor = glow; ctx.shadowBlur = 26;
+
+  // tentacles
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 6; i++) {
+    const x0 = (i - 2.5) * 30, w = Math.sin(b.t * 0.08 + i * 1.3) * 16;
+    ctx.strokeStyle = dark; ctx.lineWidth = 13 - Math.abs(i - 2.5) * 1.2;
+    ctx.beginPath(); ctx.moveTo(x0, 40); ctx.quadraticCurveTo(x0 + w, 80, x0 + w * 1.6, 112); ctx.stroke();
+    ctx.strokeStyle = glow; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0, 42); ctx.quadraticCurveTo(x0 + w, 80, x0 + w * 1.6, 112); ctx.stroke();
+  }
+  // antennae
+  for (const sgn of [-1, 1]) {
+    const sw = Math.sin(b.t * 0.06 + sgn) * 10;
+    ctx.strokeStyle = glow; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(sgn * 40, -50); ctx.quadraticCurveTo(sgn * (70 + sw), -88, sgn * (60 + sw * 1.4), -102); ctx.stroke();
+    ctx.fillStyle = light; ctx.beginPath(); ctx.arc(sgn * (60 + sw * 1.4), -102, 7, 0, Math.PI * 2); ctx.fill();
+  }
+  // spikes
+  ctx.fillStyle = dark;
+  for (let i = -3; i <= 3; i++) {
+    ctx.beginPath(); ctx.moveTo(i * 26 - 10, -58 + Math.abs(i) * 6); ctx.lineTo(i * 26, -84 + Math.abs(i) * 10); ctx.lineTo(i * 26 + 10, -58 + Math.abs(i) * 6); ctx.closePath(); ctx.fill();
+  }
+  // body
+  const g = ctx.createRadialGradient(0, -20, 10, 0, 0, 115);
+  g.addColorStop(0, light); g.addColorStop(0.45, glow); g.addColorStop(1, dark);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(0, 0, 110, 68, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  // eyes that follow the player
+  const look = Math.atan2(p.y - b.y, p.currentX - b.x);
+  const eyes = [[-52, -14, 17], [0, -30, 22], [52, -14, 17]];
+  for (const [ex, ey, er] of eyes) {
+    ctx.fillStyle = '#0a0018'; ctx.beginPath(); ctx.ellipse(ex, ey, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = b.phase === 2 ? '#ff2a55' : '#ffffff';
+    ctx.beginPath(); ctx.arc(ex + Math.cos(look) * er * 0.35, ey + Math.sin(look) * er * 0.35, er * 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(ex + Math.cos(look) * er * 0.5, ey + Math.sin(look) * er * 0.5, er * 0.24, 0, Math.PI * 2); ctx.fill();
+  }
+  // jagged mouth
+  const open = 6 + 5 * (0.5 + 0.5 * Math.sin(b.t * 0.2));
+  ctx.fillStyle = '#0a0018';
+  ctx.beginPath(); ctx.ellipse(0, 34, 46, open, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  for (let i = -3; i <= 3; i++) {
+    ctx.beginPath(); ctx.moveTo(i * 12 - 5, 34 - open * 0.8); ctx.lineTo(i * 12, 34 - open * 0.8 + 9); ctx.lineTo(i * 12 + 5, 34 - open * 0.8); ctx.closePath(); ctx.fill();
+  }
+  // hit flash
+  if (b.flash > 0) {
+    ctx.globalAlpha = Math.min(0.55, b.flash * 0.12);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(0, 0, 110, 68, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawBgParticles() {
@@ -954,12 +1768,12 @@ function drawBgParticles() {
 
 function drawLaneHighlights() {
   // Subtle lane hover glow under player
-  const lw=canvas.width/LANE_COUNT;
+  const lw=world.laneW;
   const px=game.player.currentX;
   const grad=ctx.createRadialGradient(px,game.player.baseY+32,0,px,game.player.baseY+32,lw*0.6);
   grad.addColorStop(0,`rgba(${hexRgb(game.player.color)},0.08)`);
   grad.addColorStop(1,'transparent');
-  ctx.fillStyle=grad; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle=grad; ctx.fillRect(0,0,world.w,world.h);
 }
 
 function drawShapeTrails() {
@@ -977,12 +1791,12 @@ function drawShapeTrails() {
 
 function drawFallingShapes() {
   for(const s of game.fallingShapes){
-    drawEntity(ctx,game.theme,s.entity,laneX(s.lane),s.y,s.size*s.scale,s.color,1,true,s.rotation);
+    drawEntity(ctx,game.theme,s.entity,laneX(s.lane),s.y,s.size*s.scale,s.color,1,true,s.rotation-world.angle);
 
     // Match indicator glow ring
-    if(s.isMatch){
+    if(isTarget(s)){
       ctx.save();
-      ctx.globalAlpha=0.25+Math.sin(game.frame*0.15)*0.2;
+      ctx.globalAlpha=(0.25+Math.sin(game.frame*0.15)*0.2)*game.params.ringFactor;
       ctx.strokeStyle=s.color; ctx.lineWidth=2;
       ctx.shadowBlur=15; ctx.shadowColor=s.color;
       ctx.beginPath(); ctx.arc(laneX(s.lane),s.y,s.size*1.6,0,Math.PI*2); ctx.stroke();
@@ -1009,19 +1823,37 @@ function drawPlayer() {
 
   // Glow orb beneath
   const a=p.invincible>0?0.2+Math.sin(p.invincible*0.35)*0.25:0.15;
-  const grad=ctx.createRadialGradient(p.currentX,p.baseY+20,0,p.currentX,p.baseY+20,38);
+  const gy0 = game.mode === 'boss' ? p.y : p.baseY;
+  const grad=ctx.createRadialGradient(p.currentX,gy0+20,0,p.currentX,gy0+20,38);
   grad.addColorStop(0,`rgba(${hexRgb(p.color)},${a})`);
   grad.addColorStop(1,'transparent');
-  ctx.fillStyle=grad; ctx.fillRect(0,p.baseY-20,canvas.width,80);
+  ctx.fillStyle=grad; ctx.fillRect(0,gy0-20,world.w,80);
 
   // Invincible flash
   const alpha=p.invincible>0?0.3+Math.sin(p.invincible*0.45)*0.5:1;
 
   ctx.save();
   ctx.translate(p.currentX+wx,p.y);
-  ctx.scale(p.scale,p.scale);
-  drawEntity(ctx,game.theme,p.entity,0,0,28,p.color,alpha,true,p.rotation);
+  ctx.scale(p.scale*(1-(p.squash||0)*0.5), p.scale*(1+(p.squash||0)*0.5));
+  drawEntity(ctx,game.theme,p.entity,0,0,28,p.color,alpha,true,p.rotation-world.angle);
 
+  // Earned skin: pulsing aura
+  const skin = activeSkin();
+  if (skin.aura) {
+    const pulse = 0.5 + 0.5 * Math.sin(game.frame * 0.12);
+    ctx.save();
+    ctx.strokeStyle = skin.aura; ctx.shadowColor = skin.aura; ctx.shadowBlur = 18;
+    ctx.globalAlpha = 0.5 + 0.3 * pulse; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, 40 + pulse * 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.25; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, 50 + pulse * 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  // Boss fight: show the real (small) hitbox
+  if (game.mode === 'boss') {
+    ctx.save(); ctx.globalAlpha = 0.95; ctx.fillStyle = '#ffffff'; ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
   // Shield ring when invincible
   if(p.invincible>0){
     ctx.globalAlpha=0.6;
@@ -1056,18 +1888,32 @@ function drawExplosions() {
   }
 }
 
-function drawXPBar() {
-  const pct = game.xp / game.xpNeeded;
-  document.getElementById('xpFill').style.width = (pct*100)+'%';
-}
-
 // ═══════════════════════════════════════════════════════
 //  HUD / OVERLAYS
 // ═══════════════════════════════════════════════════════
-function updateHUD() {
-  document.getElementById('hudScore').textContent = game.score.toLocaleString();
-  document.getElementById('hudLevel').textContent = game.level;
-  document.getElementById('hudLives').textContent = '❤️'.repeat(game.lives)+'🖤'.repeat(Math.max(0,3-game.lives));
+/** Refreshes HUD text. `comboAnim` = 'pop' (multiplier went up) | 'lost' (combo broken) | null. */
+function updateHUD(comboAnim = null) {
+  const hud = document.getElementById('comboHud');
+  const mult = ComboManager.multiplierFor(game.combo);
+  document.getElementById('hudBest').textContent = Math.max(game.bestAtStart, game.score).toLocaleString();
+  document.getElementById('hudLives').textContent = '❤️'.repeat(game.lives) + '🖤'.repeat(Math.max(0, game.maxLives - game.lives));
+  const multEl = document.getElementById('comboMult');
+  multEl.textContent = 'x' + mult;
+  multEl.style.color = COMBO_COLORS[ComboManager.tierIndex(game.combo)];
+  document.getElementById('comboCount').textContent = game.combo > 1 ? game.combo + ' STREAK' : '';
+  document.getElementById('xpFill').style.width = (ComboManager.progress(game.combo) * 100) + '%';
+  const hint = document.getElementById('recordHint');
+  const remaining = game.bestAtStart - game.score;
+  const near = CONFIG.NEAR_RECORD;
+  if (game.newBest) { hint.textContent = 'NEW BEST!'; hint.classList.add('show'); }
+  else if (game.bestAtStart > 0 && remaining > 0 && remaining <= Math.max(near.ABS, game.bestAtStart * near.FRACTION)) {
+    hint.textContent = remaining.toLocaleString() + ' TO NEW RECORD'; hint.classList.add('show');
+  } else hint.classList.remove('show');
+  if (comboAnim) {
+    hud.classList.remove('pop', 'lost');
+    void hud.offsetWidth;  // restart the CSS animation
+    hud.classList.add(comboAnim);
+  }
 }
 
 function updateHint() {
@@ -1082,112 +1928,638 @@ function showFlash(text,color='#00f5ff'){
   el.style.background=`rgba(${hexRgb(color)},0.12)`;
   el.classList.add('show');
   if(flashTimer) clearTimeout(flashTimer);
-  flashTimer=setTimeout(()=>el.classList.remove('show'),1200);
+  flashTimer=setTimeout(()=>el.classList.remove('show'),900);
 }
 
-let comboTimer=null;
-function showCombo(n){
-  if(n<2) return;
-  const el=document.getElementById('comboDisplay');
-  const msgs=['','','NICE!','GREAT!','SUPER!','AMAZING!','INSANE!','GOD MODE!'];
-  const color=n>=6?'#ff006e':n>=4?'#ffbe0b':'#00f5ff';
-  el.innerHTML=`<div style="color:${color};text-shadow:0 0 30px ${color};font-size:${Math.min(3,1.5+n*0.2)}rem">${msgs[Math.min(n,7)]||'🔥 '+n+'x'}</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.4);letter-spacing:3px">COMBO ${n}x</div>`;
-  el.classList.add('show');
-  if(comboTimer) clearTimeout(comboTimer);
-  comboTimer=setTimeout(()=>el.classList.remove('show'),900);
-}
+// ═══════════════════════════════════════════════════════
+//  AUDIO — tiny synthesized sounds, no asset files
+// ═══════════════════════════════════════════════════════
+const AudioManager = (() => {
+  let ac = null, lastAt = 0, lastPriority = 0;
+  // notes: [frequency Hz, start offset s, duration s, end frequency Hz | null]
+  const SOUNDS = {
+    correct:   { pri: 1, type: 'sine',     vol: 1.0, notes: [[660, 0, 0.09, 880]] },
+    perfect:   { pri: 2, type: 'triangle', vol: 1.0, notes: [[880, 0, 0.07], [1320, 0.06, 0.1]] },
+    milestone: { pri: 3, type: 'sine',     vol: 1.0, notes: [[784, 0, 0.09], [988, 0.09, 0.14]] },
+    comboUp:   { pri: 3, type: 'square',   vol: 0.45, notes: [[523, 0, 0.07], [659, 0.06, 0.07], [784, 0.12, 0.1]] },
+    miss:      { pri: 1, type: 'sine',     vol: 0.6, notes: [[300, 0, 0.12, 200]] },
+    error:     { pri: 4, type: 'sawtooth', vol: 0.55, notes: [[190, 0, 0.22, 80]] },
+    alert:     { pri: 4, type: 'square',   vol: 0.45, notes: [[880, 0, 0.12], [880, 0.2, 0.12], [1174, 0.4, 0.18]] },
+    turn:      { pri: 3, type: 'sawtooth', vol: 0.45, notes: [[280, 0, 0.22, 900]] },
+    hit:       { pri: 0, type: 'square',   vol: 0.2, notes: [[520, 0, 0.04, 380]] },
+    boom:      { pri: 4, type: 'sawtooth', vol: 0.6, notes: [[220, 0, 0.35, 40]] },
+    victory:   { pri: 5, type: 'triangle', vol: 1.0, notes: [[523, 0, 0.12], [659, 0.12, 0.12], [784, 0.24, 0.12], [1047, 0.36, 0.3], [784, 0.66, 0.1], [1047, 0.76, 0.4]] },
+    newRecord: { pri: 5, type: 'triangle', vol: 1.0, notes: [[523, 0, 0.1], [659, 0.1, 0.1], [784, 0.2, 0.1], [1047, 0.3, 0.25]] },
+    gameOver:  { pri: 5, type: 'sawtooth', vol: 0.5, notes: [[392, 0, 0.16], [330, 0.16, 0.16], [262, 0.32, 0.3, 200]] },
+  };
+  return {
+    /** Must be called from a user gesture (browsers block audio before that). */
+    unlock() {
+      try {
+        ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+        if (ac.state === 'suspended') ac.resume();
+      } catch { ac = null; }
+    },
+    get muted() { return Profile.get('muted'); },
+    toggleMute() { Profile.set('muted', !Profile.get('muted')); return Profile.get('muted'); },
+    play(name) {
+      const snd = SOUNDS[name];
+      if (!snd || !ac || Profile.get('muted')) return;
+      const now = performance.now();
+      if (now - lastAt < CONFIG.AUDIO_DEDUPE_MS && snd.pri <= lastPriority) return;  // never stack noisy sounds
+      lastAt = now; lastPriority = snd.pri;
+      const t0 = ac.currentTime;
+      for (const [f, off, dur, fEnd] of snd.notes) {
+        const osc = ac.createOscillator(), gain = ac.createGain();
+        osc.type = snd.type;
+        osc.frequency.setValueAtTime(f, t0 + off);
+        if (fEnd) osc.frequency.exponentialRampToValueAtTime(fEnd, t0 + off + dur);
+        const v = CONFIG.AUDIO_VOLUME * snd.vol;
+        gain.gain.setValueAtTime(0.0001, t0 + off);
+        gain.gain.exponentialRampToValueAtTime(v, t0 + off + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + dur);
+        osc.connect(gain).connect(ac.destination);
+        osc.start(t0 + off); osc.stop(t0 + off + dur + 0.02);
+      }
+    },
+  };
+})();
 
-function showLevelUp(level){
-  document.getElementById('lvlNum').textContent=level;
-  const el=document.getElementById('levelUpBanner');
-  el.style.animation='none'; el.style.opacity='1';
-  setTimeout(()=>{el.style.transition='opacity 0.8s';el.style.opacity='0';},2000);
-  setTimeout(()=>{el.style.transition='';el.style.animation='';},2800);
-  showFlash('NIVEL '+level+' ⚡',COLORS[level%COLORS.length]);
-}
+// ═══════════════════════════════════════════════════════
+//  EFFECTS — floating text (canvas-drawn, short and non-blocking)
+// ═══════════════════════════════════════════════════════
+const Fx = {
+  /** (x, y) = world anchor; `dy` = extra screen-space offset so stacked text never depends on direction. */
+  floatText(x, y, text, color, size, popScale = 1, dy = 0) {
+    if (game.floaters.length >= CONFIG.MAX_FLOATERS) game.floaters.shift();
+    game.floaters.push({ x, y, dy, text, color, size, popScale, age: 0 });
+  },
+  update() {
+    for (let i = game.floaters.length - 1; i >= 0; i--) {
+      if (++game.floaters[i].age >= CONFIG.FLOATER_FRAMES) game.floaters.splice(i, 1);
+    }
+  },
+  draw() {
+    for (const f of game.floaters) {
+      const t = f.age / CONFIG.FLOATER_FRAMES;
+      const pop = t < 0.18 ? 0.6 + 0.4 * easeOutBack(t / 0.18) * f.popScale : 1;   // quick pop-in
+      const [ax, ay] = toScreen(f.x, f.y);
+      const x = Math.min(Math.max(ax, 70), canvas.width - 70);
+      const y = Math.min(Math.max(ay + f.dy - easeOutCubic(t) * 34, 100), canvas.height - 30);
+      ctx.save();
+      ctx.globalAlpha = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
+      ctx.translate(x, y);
+      ctx.scale(pop, pop);
+      ctx.font = `900 ${f.size}px Orbitron, monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(4,4,15,0.75)'; ctx.lineJoin = 'round';
+      ctx.strokeText(f.text, 0, 0);
+      ctx.fillStyle = f.color; ctx.shadowBlur = 12; ctx.shadowColor = f.color;
+      ctx.fillText(f.text, 0, 0);
+      ctx.restore();
+    }
+  },
+};
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutBack(t) { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+
+// ═══════════════════════════════════════════════════════
+//  BOSS — final fight. Free movement, automatic fire, dodge the alien's shots,
+//  catch the glowing copy of your own shape for a power shot.
+//  Catching and taking damage reuse the normal run's onCatch / onWrongHit.
+// ═══════════════════════════════════════════════════════
+const bossKeys = new Set();
+let bossDrag = null;
+const clampNum = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+const BossManager = {
+  width()  { return Math.min(CONFIG.BOSS.WIDTH_MAX, world.w * 0.58, world.h * 0.30); },
+  height() { return this.width() * 0.62; },
+  homeY()  { return 118 + this.height() * 0.5 + 50; },   // below the HUD and the boss bar
+  bounds() {
+    const P = CONFIG.BOSS.PLAYER;
+    return { x0: P.MARGIN, x1: world.w - P.MARGIN, y0: this.homeY() + this.height() * 0.5 + 30, y1: world.h - P.BOTTOM_MARGIN };
+  },
+
+  /** After every catch in the normal run: bring on the boss once the run has gone far enough. */
+  onCatch() {
+    const B = CONFIG.BOSS;
+    if (!B.ENABLED || game.mode !== 'run' || game.practice || game.over) return;
+    if (game.correctCount >= B.AT_SHAPES) this.warn();
+  },
+
+  warn() {
+    game.mode = 'warn';
+    game.warnFrames = CONFIG.BOSS.WARN_FRAMES;
+    game.alert = null;
+    game.startBanner = 0;
+    document.getElementById('dirTitle').textContent = '⚠ WARNING';
+    document.getElementById('dirSub').innerHTML = 'BOSS INCOMING<br>DRAG OR WASD TO MOVE · YOU SHOOT BY YOURSELF';
+    document.getElementById('dirAlert').classList.add('show');
+    AudioManager.play('alert');
+  },
+
+  tickWarn() { if (game.mode === 'warn' && --game.warnFrames <= 0) this.start(); },
+
+  start() {
+    const B = CONFIG.BOSS;
+    setWorld('down');                       // the fight is always drawn upright
+    document.body.classList.add('boss');
+    bossKeys.clear(); bossDrag = null;
+    document.getElementById('bossName').textContent = B.NAME;
+    document.getElementById('bossFill').style.width = '100%';
+    game.mode = 'boss';
+    game.alert = null;
+    game.fallingShapes = []; game.floaters = []; game.trails = []; game.particles = []; game.explosions = [];
+    game.bullets = []; game.shots = []; game.gifts = []; game.hearts = [];
+    game.bossHits = 0;
+    game.lives = game.maxLives;
+    game.combo = 0;
+    game.params = DifficultyManager.paramsFor(0.7);    // lookalike decoys: bullets that resemble your shape
+    const p = game.player;
+    const b = this.bounds();
+    p.jumping = false; p.vy = 0; p.rotation = 0; p.invincible = 0;
+    p.currentX = world.w / 2; p.y = b.y1 - 20; p.tx = p.currentX; p.ty = p.y;
+    game.boss = {
+      hp: B.HP, maxHp: B.HP, x: world.w / 2, y: -this.height(), t: 0, state: 'intro', introLeft: B.INTRO_FRAMES,
+      flash: 0, phase: 0, dying: 0, fireCd: 0, giftCd: B.GIFT.EVERY * 0.6, heartCd: B.HEART.EVERY,
+      cd: { aimed: 60, fan: 60, stream: 30 },
+    };
+    document.getElementById('dirTitle').textContent = 'BOSS FIGHT';
+    document.getElementById('dirSub').innerHTML = 'DODGE THE FIRE<br>CATCH THE GLOWING SHAPE = POWER SHOT';
+    document.getElementById('dirAlert').classList.add('show');
+    game.startBanner = 190;
+    AudioManager.play('boom');
+    game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.WRONG;
+    updateHUD();
+    updateHint();
+  },
+
+  /** Free movement: drag (relative, so a finger never hides the ship), or WASD / arrows. */
+  movePlayer() {
+    const P = CONFIG.BOSS.PLAYER, p = game.player, b = this.bounds();
+    let vx = 0, vy = 0;
+    if (bossKeys.has('left')) vx -= 1;
+    if (bossKeys.has('right')) vx += 1;
+    if (bossKeys.has('up')) vy -= 1;
+    if (bossKeys.has('down')) vy += 1;
+    if (vx || vy) {
+      const n = Math.hypot(vx, vy);
+      p.currentX += vx / n * P.KEY_SPEED; p.y += vy / n * P.KEY_SPEED;
+      p.tx = p.currentX; p.ty = p.y;
+    } else if (p.tx !== undefined) {
+      p.currentX += clampNum((p.tx - p.currentX) * 0.45, -P.MAX_STEP, P.MAX_STEP);
+      p.y        += clampNum((p.ty - p.y) * 0.45, -P.MAX_STEP, P.MAX_STEP);
+    }
+    p.currentX = clampNum(p.currentX, b.x0, b.x1); p.y = clampNum(p.y, b.y0, b.y1);
+    p.tx = clampNum(p.tx, b.x0, b.x1); p.ty = clampNum(p.ty, b.y0, b.y1);
+  },
+
+  update() {
+    const B = CONFIG.BOSS, b = game.boss, bw = this.width(), bh = this.height();
+    b.t++;
+    if (b.flash > 0) b.flash--;
+
+    if (b.state === 'intro') {
+      b.y += (this.homeY() - b.y) * 0.06;
+      if (--b.introLeft <= 0) b.state = 'fight';
+    } else if (b.state === 'fight') {
+      const sway = (world.w - bw) * 0.42;
+      b.x = world.w / 2 + Math.sin(b.t * B.SWAY_SPEED * (1 + b.phase * 0.35)) * sway;
+      b.y = this.homeY() + Math.sin(b.t * 0.045) * 12;
+      const frac = b.hp / b.maxHp;
+      const phase = frac > B.PHASE_AT[0] ? 0 : frac > B.PHASE_AT[1] ? 1 : 2;
+      if (phase !== b.phase) this.shiftPhase(phase);
+      this.attacks(b, bh);
+      this.spawnGift(b, bh);
+      this.spawnHeart(b, bh);
+      this.autoFire();
+    } else if (b.state === 'dying') {
+      b.dying++;
+      if (b.dying % 6 === 0) {
+        const x = b.x + (Math.random() - 0.5) * bw * 0.8, y = b.y + (Math.random() - 0.5) * bh * 0.8;
+        spawnParticles(x, y, ['#ff006e', '#ffbe0b', '#06d6a0', '#ffffff'][b.dying % 4], 14);
+        game.shake = 7;
+      }
+      if (b.dying >= B.DEATH_FRAMES) { this.finish(); return; }
+    }
+    this.updateShots(b, bw, bh);
+    this.updateBullets();
+    this.updateGifts();
+    this.updateHearts();
+  },
+
+  shiftPhase(phase) {
+    const b = game.boss;
+    b.phase = phase;
+    for (const bl of game.bullets) spawnParticles(bl.x, bl.y, bl.color, 4);   // mercy: the screen clears
+    game.bullets = [];
+    b.cd = { aimed: 70, fan: 70, stream: 60 };
+    game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.WRONG;
+    const healed = game.lives < game.maxLives;      // a breather for whoever is hurting
+    if (healed) { game.lives++; updateHUD(); }
+    showFlash((phase === 1 ? 'PHASE 2' : 'FINAL PHASE') + (healed ? ' · +1 ❤' : ''), phase === 1 ? '#ffbe0b' : '#ff006e');
+    AudioManager.play('turn');
+  },
+
+  fire(from, angle, speed) {
+    if (game.bullets.length >= CONFIG.BOSS.BULLET.MAX) return;
+    const look = makeDecoy();      // never looks like your shape (or the next one)
+    game.bullets.push({
+      x: from.x, y: from.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      entity: look.entity, color: look.color, size: CONFIG.BOSS.BULLET.SIZE,
+      rot: 0, rotSpeed: (Math.random() - 0.5) * 0.16,
+    });
+  },
+  aimed(from, n, spread, speed) {
+    const p = game.player, a0 = Math.atan2(p.y - from.y, p.currentX - from.x);
+    for (let i = 0; i < n; i++) this.fire(from, a0 + (i - (n - 1) / 2) * spread, speed);
+  },
+  fan(from, n, spread, speed) {
+    for (let i = 0; i < n; i++) this.fire(from, Math.PI / 2 + (i - (n - 1) / 2) * (spread / (n - 1)), speed);
+  },
+
+  attacks(b, bh) {
+    const A = CONFIG.BOSS.ATTACKS, from = { x: b.x, y: b.y + bh * 0.28 };
+    if (b.phase === 0) {
+      if (--b.cd.aimed <= 0) { b.cd.aimed = A.P1.aimedEvery; this.aimed(from, A.P1.count, A.P1.spread, A.P1.speed); }
+    } else if (b.phase === 1) {
+      if (--b.cd.fan <= 0)   { b.cd.fan = A.P2.fanEvery; this.fan(from, A.P2.fanCount, A.P2.fanSpread, A.P2.fanSpeed); }
+      if (--b.cd.aimed <= 0) { b.cd.aimed = A.P2.aimedEvery; this.aimed(from, A.P2.aimedCount, A.P2.aimedSpread, A.P2.aimedSpeed); }
+    } else {
+      if (--b.cd.stream <= 0) {     // rapid swinging stream: the "fast shooting" phase
+        b.cd.stream = A.P3.streamEvery;
+        this.fire(from, Math.PI / 2 + Math.sin(b.t * 0.045) * A.P3.streamSwing, A.P3.streamSpeed);
+      }
+      if (--b.cd.aimed <= 0) { b.cd.aimed = A.P3.aimedEvery; this.aimed(from, A.P3.aimedCount, A.P3.aimedSpread, A.P3.aimedSpeed); }
+    }
+  },
+
+  spawnGift(b, bh) {
+    const G = CONFIG.BOSS.GIFT;
+    if (--b.giftCd > 0 || game.gifts.length) return;
+    b.giftCd = G.EVERY;
+    const m = CONFIG.BOSS.PLAYER.MARGIN + 20;
+    game.gifts.push({ x: m + Math.random() * (world.w - 2 * m), y: b.y + bh * 0.5, born: game.frame });
+  },
+
+  autoFire() {
+    const S = CONFIG.BOSS.SHOT, b = game.boss, p = game.player;
+    if (--b.fireCd > 0) return;
+    b.fireCd = S.EVERY;
+    game.shotSide = -(game.shotSide || 1);
+    game.shots.push({ x: p.currentX + game.shotSide * 9, y: p.y - 18, vy: -S.SPEED, r: S.RADIUS, dmg: S.DAMAGE, power: false, color: p.color });
+  },
+
+  damage(amount, x, y, power) {
+    const b = game.boss;
+    if (b.state !== 'fight') return;
+    b.hp = Math.max(0, b.hp - amount);
+    b.flash = power ? 8 : 3;
+    game.score += CONFIG.BOSS.HIT_SCORE * (power ? 4 : 1);
+    spawnParticles(x, y, power ? '#ffffff' : game.player.color, power ? 12 : 2);
+    if (power) { game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.TIER_UP; AudioManager.play('boom'); }
+    else AudioManager.play('hit');
+    document.getElementById('bossFill').style.width = (b.hp / b.maxHp * 100) + '%';
+    if (b.hp <= 0) this.defeat();
+  },
+
+  updateShots(b, bw, bh) {
+    for (let i = game.shots.length - 1; i >= 0; i--) {
+      const s = game.shots[i];
+      s.y += s.vy;
+      const dx = (s.x - b.x) / (bw * 0.5), dy = (s.y - b.y) / (bh * 0.5);
+      if (b.state === 'fight' && !s.spent && dx * dx + dy * dy < 1) {
+        this.damage(s.dmg, s.x, s.y, s.power);
+        if (!s.power) { game.shots.splice(i, 1); continue; }
+        s.spent = true;                      // power shots pierce, but only hurt once
+      }
+      if (s.y < -40) game.shots.splice(i, 1);
+    }
+  },
+
+  updateBullets() {
+    const B = CONFIG.BOSS, p = game.player;
+    for (let i = game.bullets.length - 1; i >= 0; i--) {
+      const bl = game.bullets[i];
+      bl.x += bl.vx; bl.y += bl.vy; bl.rot += bl.rotSpeed;
+      if (bl.x < -50 || bl.x > world.w + 50 || bl.y < -50 || bl.y > world.h + 50) { game.bullets.splice(i, 1); continue; }
+      if (p.invincible === 0 && !game.over && game.boss.state !== 'dying' &&
+          Math.hypot(bl.x - p.currentX, bl.y - p.y) < B.PLAYER.HURT_RADIUS + bl.size * B.BULLET.HURT_FACTOR) {
+        game.bullets.splice(i, 1);
+        game.bossHits++;
+        game.boss.heartCd = Math.min(game.boss.heartCd, B.HEART.AFTER_HIT);   // hurt: help is on the way
+        onWrongHit(bl);
+      }
+    }
+  },
+
+  updateGifts() {
+    const G = CONFIG.BOSS.GIFT, p = game.player;
+    for (let i = game.gifts.length - 1; i >= 0; i--) {
+      const g = game.gifts[i];
+      g.y += G.SPEED;
+      const d = Math.hypot(g.x - p.currentX, g.y - p.y);
+      if (d < G.CATCH_RADIUS && !game.over) {
+        game.gifts.splice(i, 1);
+        const at = { x: p.currentX, y: p.y };
+        onCatch(g, d / (G.CATCH_RADIUS * 1.6));          // same score / combo / evolve as the normal run
+        this.powerShot(at.x, at.y);
+        this.rerollLookalikes();
+      } else if (g.y > world.h + 40) game.gifts.splice(i, 1);
+    }
+  },
+
+  /** The boss drops a heart now and then, but only while you are missing a life. */
+  spawnHeart(b, bh) {
+    const H = CONFIG.BOSS.HEART;
+    if (game.lives >= game.maxLives) { b.heartCd = Math.max(b.heartCd, H.AFTER_HIT); return; }   // nothing to heal: keep the timer parked
+    if (--b.heartCd > 0 || game.hearts.length) return;
+    b.heartCd = H.EVERY;
+    const m = CONFIG.BOSS.PLAYER.MARGIN + 20;
+    game.hearts.push({ x: m + Math.random() * (world.w - 2 * m), y: b.y + bh * 0.5, born: game.frame });
+  },
+
+  updateHearts() {
+    const H = CONFIG.BOSS.HEART, p = game.player;
+    for (let i = game.hearts.length - 1; i >= 0; i--) {
+      const h = game.hearts[i];
+      h.y += H.SPEED;
+      h.x += Math.sin((game.frame - h.born) * 0.06) * 0.7;       // gentle sway
+      if (!game.over && game.lives < game.maxLives && Math.hypot(h.x - p.currentX, h.y - p.y) < H.CATCH_RADIUS) {
+        game.hearts.splice(i, 1);
+        game.lives++;
+        spawnParticles(h.x, h.y, '#ff4d6d', 14);
+        Fx.floatText(p.currentX, p.y, '+1 ❤', '#ff4d6d', 24, 1.25, -70);
+        AudioManager.play('perfect');
+        updateHUD();
+      } else if (h.y > world.h + 40 || game.lives >= game.maxLives) game.hearts.splice(i, 1);
+    }
+  },
+
+  powerShot(x, y) {
+    const W = CONFIG.BOSS.POWER;
+    game.shots.push({ x, y: y - 20, vy: -W.SPEED, r: W.RADIUS, dmg: W.DAMAGE, power: true, color: game.player.color });
+  },
+
+  /** After you evolve, no hostile bullet may look like your new shape. */
+  rerollLookalikes() {
+    const p = game.player;
+    for (const bl of game.bullets) {
+      if (bl.entity === p.entity && bl.color === p.color) bl.color = pickOther(COLORS, p.color);
+    }
+  },
+
+  defeat() {
+    const b = game.boss;
+    b.state = 'dying'; b.dying = 0;
+    for (const bl of game.bullets) spawnParticles(bl.x, bl.y, bl.color, 5);
+    game.bullets = []; game.gifts = []; game.hearts = [];
+    game.shake = CONFIG.SCREEN_SHAKE_AMOUNT.WRONG;
+    AudioManager.play('boom');
+    showFlash('BOSS DOWN!', '#06d6a0');
+  },
+
+  finish() {
+    const B = CONFIG.BOSS;
+    game.bossDefeated = true;
+    game.bossBonus = B.KILL_SCORE + B.KILL_SCORE_PER_LIFE * game.lives;
+    game.score += game.bossBonus;
+    endGame();
+  },
+
+  /** Skins earned by this victory (also for practice runs: they are cosmetic). */
+  awardSkins() {
+    const earned = ['gold'];
+    if (game.bossHits === 0) earned.push('void');
+    if (game.oneLife) earned.push('skull');
+    const have = Profile.get('skins');
+    const fresh = earned.filter(id => !have.includes(id));
+    Profile.update({
+      skins: [...have, ...fresh],
+      bossKills: Profile.get('bossKills') + 1,
+      bossKillsOneLife: Profile.get('bossKillsOneLife') + (game.oneLife ? 1 : 0),
+      bossFlawless: Profile.get('bossFlawless') + (game.bossHits === 0 ? 1 : 0),
+    });
+    return fresh;
+  },
+};
 
 // ═══════════════════════════════════════════════════════
 //  TOUCH CONTROLS
 // ═══════════════════════════════════════════════════════
+function moveLane(delta) {
+  const p = game.player;
+  p.targetLane = Math.min(LANE_COUNT - 1, Math.max(0, p.targetLane + delta));
+}
+function jump() {
+  const p = game.player;
+  if (!p.jumping) { p.jumping = true; p.vy = -17; }
+}
+/** `screenDir` = what the player did on screen; the current travel direction decides what it means. */
+function handleIntent(screenDir) {
+  const D = DIRECTIONS[world.dir];
+  if (screenDir === D.jump) jump();
+  else if (D.keys[screenDir] !== undefined) moveLane(D.keys[screenDir]);
+}
+
 function setupTouchControls() {
-  let tx=0,ty=0,tt=0;
+  let tx=0,ty=0;
   canvas.addEventListener('touchstart',(e)=>{
     e.preventDefault();
-    const t=e.touches[0]; tx=t.clientX; ty=t.clientY; tt=Date.now();
+    const t=e.touches[0]; tx=t.clientX; ty=t.clientY;
+    bossDrag = game.mode === 'boss' ? { sx: tx, sy: ty, px: game.player.currentX, py: game.player.y } : null;
   },{passive:false});
+
+  // Boss fight: relative drag, so the finger never covers the ship
+  canvas.addEventListener('touchmove',(e)=>{
+    e.preventDefault();
+    if (game.mode !== 'boss' || !bossDrag) return;
+    const t=e.touches[0];
+    game.player.tx = bossDrag.px + (t.clientX - bossDrag.sx);
+    game.player.ty = bossDrag.py + (t.clientY - bossDrag.sy);
+  },{passive:false});
+  canvas.addEventListener('mousedown',(e)=>{
+    if (game.mode === 'boss') bossDrag = { sx: e.clientX, sy: e.clientY, px: game.player.currentX, py: game.player.y };
+  });
+  window.addEventListener('mousemove',(e)=>{
+    if (game.mode !== 'boss' || !bossDrag) return;
+    game.player.tx = bossDrag.px + (e.clientX - bossDrag.sx);
+    game.player.ty = bossDrag.py + (e.clientY - bossDrag.sy);
+  });
+  window.addEventListener('mouseup',()=>{ bossDrag = null; });
 
   canvas.addEventListener('touchend',(e)=>{
     e.preventDefault();
     if(!game.running) return;
+    if (game.mode === 'boss') { bossDrag = null; return; }
     const t=e.changedTouches[0];
-    const dx=t.clientX-tx, dy=t.clientY-ty, dt=Date.now()-tt;
-
-    // Swipe up = jump
-    if(dy<-50&&Math.abs(dy)>Math.abs(dx)&&dt<350){
-      if(!game.player.jumping){ game.player.jumping=true; game.player.vy=-17; }
-      return;
-    }
-    // Tap or swipe left/right
-    if(Math.abs(dx)<50&&Math.abs(dy)<50){
-      // tap
-      if(t.clientX < canvas.width/2) game.player.targetLane=Math.max(0,game.player.targetLane-1);
-      else game.player.targetLane=Math.min(LANE_COUNT-1,game.player.targetLane+1);
-    } else if(Math.abs(dx)>40){
-      if(dx<0) game.player.targetLane=Math.max(0,game.player.targetLane-1);
-      else game.player.targetLane=Math.min(LANE_COUNT-1,game.player.targetLane+1);
+    const dx=t.clientX-tx, dy=t.clientY-ty;
+    if (Math.abs(dx) < 45 && Math.abs(dy) < 45) {
+      // Tap: the half of the screen you touch is the way you move (top/bottom when shapes travel sideways)
+      handleIntent(DIRECTIONS[world.dir].swap ? (t.clientY < innerHeight / 2 ? 'up' : 'down')
+                                              : (t.clientX < innerWidth / 2 ? 'left' : 'right'));
+    } else {
+      handleIntent(Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down'));
     }
   },{passive:false});
 
   // Keyboard
+  const KEY_DIR = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down' };
   document.addEventListener('keydown',(e)=>{
-    if(!game.running) return;
-    if(e.key==='ArrowLeft') game.player.targetLane=Math.max(0,game.player.targetLane-1);
-    if(e.key==='ArrowRight') game.player.targetLane=Math.min(LANE_COUNT-1,game.player.targetLane+1);
-    if((e.key==='ArrowUp'||e.key===' ')&&!game.player.jumping){game.player.jumping=true;game.player.vy=-17;}
+    if (document.activeElement.tagName !== 'INPUT') {
+      if (e.key === 'D') toggleDebug();  // Shift+D
+      if ((e.key === 'Enter' || e.key === ' ') && !document.getElementById('screenGameOver').classList.contains('hidden')) {
+        e.preventDefault(); retry(); return;
+      }
+    }
+    if(!game.running || e.shiftKey) return;
+    const k = e.key.toLowerCase();
+    if (game.mode === 'boss') {        // free movement while a key is held
+      if (KEY_DIR[k]) { e.preventDefault(); bossKeys.add(KEY_DIR[k]); }
+      return;
+    }
+    if (k === ' ') { e.preventDefault(); jump(); }
+    else if (KEY_DIR[k]) { e.preventDefault(); handleIntent(KEY_DIR[k]); }
   });
+  document.addEventListener('keyup',(e)=>{ const d = KEY_DIR[e.key.toLowerCase()]; if (d) bossKeys.delete(d); });
+  window.addEventListener('blur',()=>bossKeys.clear());
 }
 
 // ═══════════════════════════════════════════════════════
 //  GAME OVER
 // ═══════════════════════════════════════════════════════
-async function endGame() {
-  game.running=false;
-  if(raf){cancelAnimationFrame(raf);raf=null;}
+/** Lifetime stats kept on this device. */
+function recordRunStats() {
+  Profile.update({
+    [game.oneLife ? 'bestScoreOneLife' : 'bestScore']: Math.max(Profile.get(game.oneLife ? 'bestScoreOneLife' : 'bestScore'), game.score),
+    totalGames: Profile.get('totalGames') + 1,
+    totalScore: Profile.get('totalScore') + game.score,
+    totalShapes: Profile.get('totalShapes') + game.correctCount,
+    highestCombo: Math.max(Profile.get('highestCombo'), game.bestCombo),
+    totalHits: Profile.get('totalHits') + game.correctCount,
+    perfectHits: Profile.get('perfectHits') + game.perfects,
+  });
+}
 
-  // Save score
-  let record = currentUser?.record || 0;
-  if(!currentUser?.offline && currentUser?.id){
-    try{
-      const res=await fetch(`${API}/score`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({id:currentUser.id,score:game.score})
-      });
-      const d=await res.json();
-      record=d.record||record;
-      currentUser.record=record;
-    }catch{}
-  }
+let retryLockedUntil = 0;
 
-  const isNew=game.score>currentUser?.record;
-  document.getElementById('goTitle').textContent=isNew?'🏆 NUEVO RÉCORD':'GAME OVER';
-  document.getElementById('goScore').textContent=game.score.toLocaleString();
-  document.getElementById('goRecord').textContent=record.toLocaleString();
-  document.getElementById('goCorrect').textContent=game.correctCount;
-  document.getElementById('goBestCombo').textContent=game.bestCombo+'x';
-  document.getElementById('goLevel').textContent=game.level;
+function endGame() {
+  if (!game.running) return;
+  game.running = false;
+  if (raf) { cancelAnimationFrame(raf); raf = null; }
 
+  document.body.classList.remove('boss');
+  bossKeys.clear(); bossDrag = null;
+  DirectionManager.hideAlert();
+  document.getElementById('flashMsg').classList.remove('show');   // in-run toasts must not leak onto this screen
+
+  const victory = game.bossDefeated, practice = game.practice;
+  const previousBest = game.bestAtStart;
+  const beatBest = !practice && previousBest > 0 && game.score > previousBest;
+  const best = practice ? previousBest : Math.max(previousBest, game.score);
+  const before = unlockedThemeIds();
+  if (!practice) recordRunStats();
+  const newSkins = victory ? BossManager.awardSkins() : [];
+
+  const attempts = game.correctCount + game.fails;
+  document.getElementById('goLabel').textContent = 'SCORE' + (practice ? ' · PRACTICE' : game.oneLife ? ' · ☠ 1 LIFE' : '');
+  const title = document.getElementById('goTitle');
+  title.textContent = victory ? '👾 BOSS DEFEATED!' : beatBest ? '🏆 NEW BEST!' : 'GAME OVER';
+  title.style.fontSize = victory ? 'clamp(1.15rem, 6vw, 1.6rem)' : '2rem';
+  title.style.letterSpacing = victory ? '3px' : '';
+  document.getElementById('goScore').textContent = game.score.toLocaleString();
+  document.getElementById('goRecord').textContent = best.toLocaleString();
+  document.getElementById('goBestCombo').textContent = 'x' + game.bestCombo;
+  document.getElementById('goCorrect').textContent = game.correctCount;
+  document.getElementById('goAccuracy').textContent = attempts ? Math.round(game.correctCount / attempts * 100) + '%' : '—';
+
+  const bossRow = document.getElementById('goBossRow');
+  bossRow.style.display = game.boss ? '' : 'none';
+  if (game.boss) document.getElementById('goBoss').textContent = victory ? 'DEFEATED' : Math.ceil(game.boss.hp / game.boss.maxHp * 100) + '% LEFT';
+  document.getElementById('btnBossRetry').style.display = game.boss && !victory ? '' : 'none';
+
+  // All of these are computed from this run's real numbers.
+  const gap = previousBest - game.score;
+  const lines = [];
+  if (victory) lines.push(`VICTORY · +${game.bossBonus.toLocaleString()} BONUS`);
+  if (practice) lines.push('PRACTICE — NOT COUNTED FOR RECORDS');
+  else if (beatBest) lines.push(`NEW RECORD\n+${(game.score - previousBest).toLocaleString()} ABOVE PREVIOUS BEST`);
+  else if (previousBest === 0 && game.score > 0) lines.push('FIRST SCORE SET — NOW BEAT IT!');
+  else if (gap > 0 && gap <= previousBest * CONFIG.NEAR_LOSS_FRACTION) lines.push(`YOU WERE ${gap.toLocaleString()} POINTS FROM YOUR BEST`);
+  const msgEl = document.getElementById('goRecordMsg');
+  msgEl.textContent = lines.join('\n');
+  msgEl.style.whiteSpace = 'pre-line';
+
+  const newlyUnlocked = unlockedThemeIds().filter(id => !before.includes(id))
+    .map(id => THEMES[id].label.toUpperCase() + ' THEME')
+    .concat(newSkins.map(id => SKINS[id].label.toUpperCase() + ' SKIN'));
+  document.getElementById('goUnlock').textContent = newlyUnlocked.length ? 'UNLOCKED: ' + newlyUnlocked.join(' · ') : '';
+  renderThemePicker();
+  renderSkinPicker();
+
+  AudioManager.play(victory ? 'victory' : beatBest ? 'newRecord' : 'gameOver');
+  retryLockedUntil = performance.now() + CONFIG.GAME_OVER_INPUT_LOCK_MS;
   show('screenGameOver');
   showTab('stats');
   drawMenuBg();
+  if (!game.oneLife && !practice) submitScore(game.score);   // global ranking is normal mode only; network never blocks the screen
 }
 
-// show() override to handle no-screen state (during game)
-const origShow = show;
-window.show = function(id) {
-  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
-  if(id) document.getElementById(id).classList.remove('hidden');
-};
+/** Fire-and-forget: keeps the global leaderboard in sync without delaying Retry. */
+async function submitScore(score) {
+  if (!currentUser || currentUser.offline || score <= 0) return;
+  try {
+    const res = await fetch(`${API}/score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: currentUser.id, score }),
+    });
+    const d = await res.json();
+    if (res.ok && d.record) currentUser.record = Math.max(currentUser.record || 0, d.record);
+  } catch {}
+}
+
+/** Died against the boss? Jump straight back into the fight (practice: not counted for records). */
+function retryBoss() {
+  if (performance.now() < retryLockedUntil || !currentUser) return;
+  AudioManager.unlock();
+  startGame({ bossOnly: true });
+}
+
+/** Game Over → new run, no reload and no network round trip. */
+function retry() {
+  if (performance.now() < retryLockedUntil || !currentUser) return;
+  AudioManager.unlock();
+  startGame();
+}
+
+// ═══════════════════════════════════════════════════════
+//  DEBUG TELEMETRY — local only, toggle with the D key or ?debug
+// ═══════════════════════════════════════════════════════
+function renderDebug() {
+  const el = document.getElementById('debugPanel');
+  const on = Profile.get('debug');
+  el.style.display = on ? 'block' : 'none';
+  if (!on || !game.running) return;
+  const P = game.params;
+  el.textContent =
+    `score      ${game.score}\n` +
+    `time       ${((performance.now() - game.startedAt) / 1000).toFixed(1)}s\n` +
+    `direction  ${world.dir}  changes ${game.directionChanges}${game.alert ? '  (alert→' + game.alert.to + ')' : ''}\n` +
+    `difficulty ${game.difficulty.toFixed(3)}  ${CONFIG.PHASES[game.phase].name}${DifficultyManager.isStruggling() ? ' (held)' : ''}\n` +
+    `speed      ${game.speed.toFixed(2)}   spawn ${game.spawnRate}\n` +
+    `target%    ${(P.targetChance * 100).toFixed(0)}  lookalike ${(P.lookalikeChance * 100).toFixed(0)}  double ${(P.doubleChance * 100).toFixed(0)}\n` +
+    (game.boss ? `boss       hp ${game.boss.hp}/${game.boss.maxHp}  phase ${game.boss.phase + 1}  bullets ${game.bullets.length}  ${game.boss.state}\n` : '') +
+    `combo      ${game.combo} (x${ComboManager.multiplierFor(game.combo)})  best ${game.bestCombo}\n` +
+    `ok/failed  ${game.correctCount}/${game.fails}  perfect ${game.perfects}`;
+}
+
+function toggleDebug() {
+  Profile.set('debug', !Profile.get('debug'));
+  renderDebug();
+  if (!Profile.get('debug')) document.getElementById('debugPanel').style.display = 'none';
+}
 </script>
 </body>
 </html>
