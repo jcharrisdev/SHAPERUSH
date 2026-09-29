@@ -39,6 +39,7 @@
 - Precisión: **PERFECT** (x1.5) si ya estás alineado en el carril, **GREAT** (x1.25), **GOOD** (x1).
 - Puntos por acierto = `100 × combo × precisión`.
 - **Cambios de dirección:** tras 12 formas atrapadas (y luego cada 10-16) aparece un aviso de ~2 s: "DIRECTION CHANGE", flechas por el borde donde entrarán las formas y un círculo punteado donde quedarás. Después las formas vienen de arriba, abajo, izquierda o derecha, y tu personaje pasa al lado contrario. Las formas que quedaban en pantalla desaparecen sin castigo.
+- **Cada partida empieza desde otro punto de vista:** la primera vez es la clásica (formas de arriba a abajo); después la dirección inicial nunca se repite dos partidas seguidas y se muestra un aviso breve con los controles (`DIRECTION.VARY_START`).
 - Controles según la dirección (teclado, WASD o deslizar): el eje **perpendicular** al avance mueve de carril y el eje **paralelo** hacia donde nacen las formas es el salto. Espacio siempre salta. En pantalla táctil, tocar la mitad izquierda/derecha (o superior/inferior) también mueve.
 - La dificultad sube poco a poco (EASY START → MEDIUM FLOW → HIGH INTENSITY). Si cometes 2 errores seguidos deja de subir (nunca baja).
 - Se guardan en tu dispositivo (localStorage): mejor puntuación, estadísticas y temas desbloqueados (Emoji 1.500, Pixel 3.500, Neon 5.000 puntos totales).

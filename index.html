@@ -269,7 +269,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 
 <!-- ══ FLASH ══ -->
 <div id="flashMsg"></div>
-<div id="dirAlert"><div class="dir-title">⚠ DIRECTION CHANGE</div><div class="dir-sub" id="dirSub"></div></div>
+<div id="dirAlert"><div class="dir-title" id="dirTitle">⚠ DIRECTION CHANGE</div><div class="dir-sub" id="dirSub"></div></div>
 <div id="turnFlash"></div>
 
 <!-- ══════════════════════════════════════
@@ -376,6 +376,9 @@ const CONFIG = {
     GAP_SHAPES: [10, 16],      // then every N..M catches
     ALERT_FRAMES: 120,         // warning time (~2s); new shapes stop spawning meanwhile
     POST_SWITCH_SPAWN_DELAY: 40,
+    VARY_START: true,          // each new run starts from a different direction than the previous run
+    START_BANNER_FRAMES: 130,  // controls reminder when a run starts from a non-default direction
+    START_SPAWN_DELAY: 95,     // first shape waits a little so the player can orient
   },
 
   // Score = BASE_SCORE * comboMultiplier * precisionMultiplier
@@ -474,7 +477,7 @@ const Profile = (() => {
   const DEFAULTS = {
     bestScore: 0, bestScoreOneLife: 0, oneLife: false, totalGames: 0, totalScore: 0, totalShapes: 0, highestCombo: 0,
     totalHits: 0, perfectHits: 0,
-    lastId: '', theme: 'geo', muted: false, debug: false,
+    lastId: '', lastStartDir: 'down', theme: 'geo', muted: false, debug: false,
   };
   let data = { ...DEFAULTS };
   try { Object.assign(data, JSON.parse(localStorage.getItem(KEY)) || {}); } catch {}
@@ -613,11 +616,33 @@ const DifficultyManager = {
 };
 
 const DirectionManager = {
+  /** First run ever: classic top-down. After that: never the same start direction twice in a row. */
+  pickStart() {
+    const C = CONFIG.DIRECTION;
+    const last = Profile.get('lastStartDir');
+    if (!C.ENABLED || !C.VARY_START || Profile.get('totalGames') === 0) return this.rememberStart('down');
+    const options = Object.keys(DIRECTIONS).filter(d => d !== last);
+    return this.rememberStart(options[Math.floor(Math.random() * options.length)]);
+  },
+  rememberStart(dir) { Profile.set('lastStartDir', dir); return dir; },
+
   reset() {
     game.alert = null;
+    game.startBanner = 0;
     game.directionChanges = 0;
     game.nextChangeShapes = CONFIG.DIRECTION.FIRST_AT_SHAPES;
     this.hideAlert();
+    if (world.dir !== 'down') this.showStartBanner();
+  },
+
+  /** Non-blocking reminder of where shapes come from and how to control the player. */
+  showStartBanner() {
+    const D = DIRECTIONS[world.dir];
+    game.startBanner = CONFIG.DIRECTION.START_BANNER_FRAMES;
+    game.nextSpawnFrame = Math.max(game.nextSpawnFrame, CONFIG.DIRECTION.START_SPAWN_DELAY);
+    document.getElementById('dirTitle').textContent = 'NEW VIEW';
+    document.getElementById('dirSub').innerHTML = `SHAPES COME FROM THE ${D.from}<br>${D.hint}`;
+    document.getElementById('dirAlert').classList.add('show');
   },
 
   /** Called after every catch: warn once the run has advanced far enough. */
@@ -631,6 +656,7 @@ const DirectionManager = {
     const to = options[Math.floor(Math.random() * options.length)];
     game.alert = { to, frames: CONFIG.DIRECTION.ALERT_FRAMES, shown: null };
     AudioManager.play('alert');
+    document.getElementById('dirTitle').textContent = '⚠ DIRECTION CHANGE';
     document.getElementById('dirAlert').classList.add('show');
     this.renderCountdown();
   },
@@ -646,6 +672,7 @@ const DirectionManager = {
   hideAlert() { document.getElementById('dirAlert').classList.remove('show'); },
 
   tick() {
+    if (game.startBanner > 0 && --game.startBanner === 0 && !game.alert) this.hideAlert();
     if (!game.alert) return;
     if (--game.alert.frames <= 0) this.commit();
     else this.renderCountdown();
@@ -1000,7 +1027,7 @@ function startGame() {
   if (raf) cancelAnimationFrame(raf);
   if (menuRaf) cancelAnimationFrame(menuRaf);
   show(null); // hide all screens
-  setWorld('down');
+  setWorld(DirectionManager.pickStart());
 
   const theme = selectedTheme;
   const oneLife = Profile.get('oneLife');
