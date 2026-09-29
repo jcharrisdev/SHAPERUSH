@@ -48,14 +48,6 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 #hintBar span{font-size:0.62rem;letter-spacing:3px;color:rgba(255,255,255,0.35);text-transform:uppercase;}
 #hintCanvas{border-radius:50%;}
 
-/* ── LANE TOUCH ZONES ── */
-#touchLeft,#touchRight{
-  position:fixed;top:0;bottom:0;z-index:25;width:40%;
-  opacity:0;
-}
-#touchLeft{left:0;}
-#touchRight{right:0;}
-
 /* ── SCREENS ── */
 .screen{
   position:fixed;inset:0;z-index:50;
@@ -69,7 +61,7 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 .logo{
   font-family:'Orbitron',monospace;font-weight:900;
   font-size:clamp(2.2rem,9vw,4rem);
-  letter-spacing:6px;color:#fff;
+  letter-spacing:6px;color:#fff;text-align:center;padding-left:6px;
   text-shadow:0 0 30px var(--cyan),0 0 60px var(--cyan);
   animation:logoPulse 2s ease-in-out infinite;
   margin-bottom:4px;
@@ -126,6 +118,9 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 }
 .theme-btn span{font-size:0.45rem;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;}
 .theme-btn.locked{opacity:0.4;}
+.howto{font-size:0.72rem;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:18px;line-height:1.7;}
+.howto b{color:var(--cyan);font-weight:600;}
+.howto-keys{font-size:0.62rem;letter-spacing:1px;color:rgba(255,255,255,0.35);}
 #themeHint{font-size:0.6rem;letter-spacing:1px;color:rgba(255,255,255,0.4);text-align:center;margin-top:10px;min-height:1em;}
 .theme-btn.active{border-color:var(--cyan);background:rgba(0,245,255,0.12);box-shadow:0 0 16px rgba(0,245,255,0.3);}
 
@@ -158,15 +153,6 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
 .lb-name{flex:1;font-size:0.82rem;color:rgba(255,255,255,0.75);}
 .lb-score{font-family:'Orbitron',monospace;font-size:0.82rem;color:var(--cyan);}
 .lb-me{background:rgba(0,245,255,0.07);border-radius:8px;padding:0 6px;margin:0 -6px;}
-
-/* INSTRUCTIONS MINI */
-.instruct{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px;}
-.instruct-item{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;min-width:64px;
-}
-.instruct-icon{font-size:1.2rem;}
-.instruct-text{font-size:0.58rem;color:rgba(255,255,255,0.4);letter-spacing:1px;text-align:center;}
 
 /* FLASH MESSAGE */
 #flashMsg{
@@ -287,6 +273,11 @@ body{font-family:'Exo 2',sans-serif;touch-action:none;user-select:none;}
     <div id="themeHint"></div>
   </div>
 
+  <div class="howto">
+    <div><b>Atrapa</b> la forma del indicador ↓ · <b>esquiva</b> las demás</div>
+    <div class="howto-keys">◀ ▶ mover &nbsp;·&nbsp; ▲ saltar &nbsp;·&nbsp; M sonido</div>
+  </div>
+
   <button class="btn btn-primary" id="btnStart">JUGAR</button>
   <button class="btn btn-ghost" id="btnLeaderboard">🏆 Clasificación Global</button>
 </div>
@@ -375,8 +366,8 @@ const CONFIG = {
   NEAR_MISS_PX: 45,
 
   // Difficulty d runs 0..1. Everything below is interpolated between its EASY and HARD value.
-  MIN_SPEED: 3.0,              // fall speed (px/step) at d=0
-  MAX_SPEED: 8.0,              // ... and at d=1
+  MIN_SPEED: 4.0,              // fall speed (px/step) at d=0
+  MAX_SPEED: 8.5,              // ... and at d=1
   DIFFICULTY_CURVE: 1.3,       // >1 = gentler start, steeper end
   DIFFICULTY_RATE: {
     PER_HIT: 0.02,             // d gained per catch
@@ -393,9 +384,9 @@ const CONFIG = {
     { name: 'MEDIUM FLOW',    until: 0.55 },
     { name: 'HIGH INTENSITY', until: 1.01 },
   ],
-  SPAWN_INTERVAL: { EASY: 95, HARD: 36 },   // steps between waves
+  SPAWN_INTERVAL: { EASY: 70, HARD: 36 },   // steps between waves
   SPAWN_JITTER: 0.15,
-  FIRST_SPAWN_FRAME: 40,       // the first shape is always the target, so the goal is obvious
+  FIRST_SPAWN_FRAME: 20,       // the first shape is always the target, so the goal is obvious
   TARGET_CHANCE: { EASY: 0.6, HARD: 0.32 },
   LOOKALIKE_CHANCE: { EASY: 0, HARD: 0.75 },  // decoys sharing colour or shape with the target
   DOUBLE_SPAWN: { START_AT: 0.35, MAX_CHANCE: 0.4 },
@@ -415,6 +406,7 @@ const CONFIG = {
   GAME_OVER_INPUT_LOCK_MS: 350,  // ignore Retry taps that were meant for the game
   API_TIMEOUT_MS: 2500,
   DEBUG_UPDATE_STEPS: 15,
+  INTRO_HINT_GAMES: 3,         // show the "what to catch" hint during a player's first runs
 
   FLOATER_FRAMES: 42,          // floating text lifetime (~700ms)
   MAX_FLOATERS: 10,
@@ -452,7 +444,7 @@ const Profile = (() => {
   const DEFAULTS = {
     bestScore: 0, totalGames: 0, totalScore: 0, totalShapes: 0, highestCombo: 0,
     totalHits: 0, perfectHits: 0,
-    lastId: '', theme: 'geo', muted: false, debug: false, seenIntro: false,
+    lastId: '', theme: 'geo', muted: false, debug: false,
   };
   let data = { ...DEFAULTS };
   try { Object.assign(data, JSON.parse(localStorage.getItem(KEY)) || {}); } catch {}
@@ -873,7 +865,7 @@ function startGame() {
   game = {
     running: true, over: false, overTimer: 0,
     newBest: false, startedAt: performance.now(),
-    score: 0, displayScore: 0, lives: CONFIG.START_LIVES, level: 1,
+    score: 0, displayScore: 0, lives: CONFIG.START_LIVES,
     speed: CONFIG.MIN_SPEED, spawnRate: CONFIG.SPAWN_INTERVAL.EASY, frame: 0,
     nextSpawnFrame: CONFIG.FIRST_SPAWN_FRAME, spawned: 0,
     correctCount: 0, fails: 0, perfects: 0, combo: 0, bestCombo: 0,
@@ -896,6 +888,7 @@ function startGame() {
   game.player.y = game.player.baseY;
   game.player.currentX = laneX(1);
   DifficultyManager.reset();
+  if (Profile.get('totalGames') < CONFIG.INTRO_HINT_GAMES) showFlash('CATCH THE SHAPE BELOW ↓', '#00f5ff');
 
   updateHUD();
   updateHint();

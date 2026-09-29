@@ -31,12 +31,27 @@
 
 ---
 
+## Cómo se juega
+
+- Abajo ves el indicador **ATRAPA**: esa es tu forma. Muévete entre 3 carriles (◀ ▶ / A D / toque o deslizar) y **atrápala**; al hacerlo evolucionas a la siguiente forma y color.
+- Las demás formas quitan una vida. Puedes esquivarlas cambiando de carril o saltando (▲ / W / deslizar arriba).
+- Combo: 5 aciertos seguidos = x2, 10 = x3, 20 = x4. Fallar o dejar pasar tu forma reinicia el combo.
+- Precisión: **PERFECT** (x1.5) si ya estás alineado en el carril, **GREAT** (x1.25), **GOOD** (x1).
+- Puntos por acierto = `100 × combo × precisión`.
+- La dificultad sube poco a poco (EASY START → MEDIUM FLOW → HIGH INTENSITY). Si cometes 2 errores seguidos deja de subir (nunca baja).
+- Se guardan en tu dispositivo (localStorage): mejor puntuación, estadísticas y temas desbloqueados (Emoji 1.500, Pixel 3.500, Neon 5.000 puntos totales).
+
+## Balance y depuración
+
+- Todos los valores de balance están en el objeto `CONFIG` al inicio del `<script>` de `index.html` (puntos, umbrales de combo, precisión, velocidad mínima/máxima, ritmo de dificultad, shake, partículas, hitos, desbloqueos en `THEMES`).
+- **Shift+D** (o `?debug` en la URL) muestra telemetría local: score, tiempo, dificultad/fase, combo, aciertos/fallos. No se envía a ningún servidor.
+- **M** silencia el sonido.
+
 ## Estructura del proyecto
 
 ```
 shaperush/
-├── public/
-│   └── index.html      ← El juego completo
+├── index.html          ← El juego completo (HTML + CSS + JS)
 ├── api/
 │   ├── user.js         ← POST /api/user
 │   ├── score.js        ← POST /api/score
@@ -45,3 +60,5 @@ shaperush/
 ├── vercel.json         ← Config de Vercel
 └── package.json
 ```
+
+> Nota: el ranking global lo reporta el cliente, así que no es a prueba de trampas. `api/score.js` solo valida que el score sea un entero razonable.
